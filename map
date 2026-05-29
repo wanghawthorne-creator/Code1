@@ -1,0 +1,2905 @@
+<!DOCTYPE html>
+
+<html lang="zh">
+
+<head>
+
+<meta charset="UTF-8">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>大富翁投资学 · 互动经济地图</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;500;600;700&family=Noto+Sans+SC:wght@300;400;500&family=ZCOOL+XiaoWei&display=swap" rel="stylesheet">
+
+<style>
+
+/* ===================== ROOT VARIABLES ===================== */
+
+:root {
+
+  --parchment: #f4edd8;
+
+  --parchment-dark: #e8d9b5;
+
+  --parchment-shadow: #c9b98a;
+
+  --ink: #2c1810;
+
+  --ink-light: #5c3d2e;
+
+  --ink-faint: #9c7b6b;
+
+  --gold: #c9922a;
+
+  --gold-light: #e8b84b;
+
+  --gold-dark: #8b6520;
+
+
+
+  --purple-zone: #6b3fa0;
+
+  --ltblue-zone: #2980b9;
+
+  --pink-zone: #d63384;
+
+  --orange-zone: #e07b2a;
+
+  --red-zone: #c0392b;
+
+  --yellow-zone: #c9a227;
+
+  --green-zone: #27ae60;
+
+  --dkblue-zone: #1a3a6b;
+
+
+
+  --panel-bg: rgba(244,237,216,0.97);
+
+  --border-ornate: 2px solid var(--gold);
+
+  --shadow-paper: 0 8px 32px rgba(44,24,16,0.18), 0 2px 8px rgba(44,24,16,0.10);
+
+  --radius: 4px;
+
+
+
+  --font-title: 'ZCOOL XiaoWei', 'Noto Serif SC', serif;
+
+  --font-body: 'Noto Sans SC', sans-serif;
+
+  --font-serif: 'Noto Serif SC', serif;
+
+}
+
+
+
+/* ===================== RESET & BASE ===================== */
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html { font-size: 14px; }
+
+body {
+
+  background: #1a0f0a;
+
+  background-image:
+
+    radial-gradient(ellipse at 20% 50%, rgba(100,60,20,0.3) 0%, transparent 60%),
+
+    radial-gradient(ellipse at 80% 50%, rgba(60,30,10,0.3) 0%, transparent 60%);
+
+  min-height: 100vh;
+
+  font-family: var(--font-body);
+
+  color: var(--ink);
+
+  overflow-x: hidden;
+
+}
+
+
+
+/* ===================== HEADER ===================== */
+
+#header {
+
+  text-align: center;
+
+  padding: 1.5rem 1rem 1rem;
+
+  position: relative;
+
+}
+
+#header::before {
+
+  content: '❧ ❧ ❧';
+
+  display: block;
+
+  color: var(--gold);
+
+  font-size: 1.2rem;
+
+  margin-bottom: .5rem;
+
+  letter-spacing: .5rem;
+
+}
+
+#header h1 {
+
+  font-family: var(--font-title);
+
+  font-size: clamp(1.6rem, 3vw, 2.4rem);
+
+  color: var(--gold-light);
+
+  text-shadow: 0 2px 8px rgba(0,0,0,0.5);
+
+  letter-spacing: .15em;
+
+  line-height: 1.2;
+
+}
+
+#header p {
+
+  color: #c9b98a;
+
+  font-size: .85rem;
+
+  margin-top: .4rem;
+
+  letter-spacing: .05em;
+
+}
+
+
+
+/* ===================== APP LAYOUT ===================== */
+
+#app {
+
+  display: grid;
+
+  grid-template-columns: 1fr 380px;
+
+  grid-template-rows: auto 1fr;
+
+  gap: 1.25rem;
+
+  max-width: 1280px;
+
+  margin: 0 auto;
+
+  padding: 0 1rem 2rem;
+
+  min-height: calc(100vh - 120px);
+
+}
+
+
+
+/* ===================== BOARD CONTAINER ===================== */
+
+#board-wrap {
+
+  grid-column: 1;
+
+  grid-row: 1 / 3;
+
+  display: flex;
+
+  flex-direction: column;
+
+  align-items: center;
+
+  gap: 1rem;
+
+}
+
+
+
+/* ===================== MONOPOLY BOARD ===================== */
+
+#board {
+
+  background: var(--parchment);
+
+  border: 3px solid var(--gold-dark);
+
+  box-shadow: var(--shadow-paper), inset 0 0 40px rgba(180,140,60,0.08);
+
+  position: relative;
+
+  display: grid;
+
+  grid-template-columns: 72px repeat(9, 1fr) 72px;
+
+  grid-template-rows: 72px repeat(9, 1fr) 72px;
+
+  width: 100%;
+
+  max-width: 660px;
+
+  aspect-ratio: 1;
+
+}
+
+
+
+/* Board center */
+
+#board-center {
+
+  grid-column: 2 / 11;
+
+  grid-row: 2 / 11;
+
+  display: flex;
+
+  flex-direction: column;
+
+  align-items: center;
+
+  justify-content: center;
+
+  padding: 1rem;
+
+  text-align: center;
+
+  border: 1px solid var(--parchment-shadow);
+
+  background: linear-gradient(135deg, rgba(244,237,216,0.6) 0%, rgba(232,217,181,0.6) 100%);
+
+  position: relative;
+
+  overflow: hidden;
+
+}
+
+#board-center::before {
+
+  content: '';
+
+  position: absolute;
+
+  inset: 8px;
+
+  border: 1px solid var(--gold);
+
+  opacity: 0.3;
+
+  pointer-events: none;
+
+}
+
+.center-title {
+
+  font-family: var(--font-title);
+
+  font-size: clamp(1rem, 2vw, 1.4rem);
+
+  color: var(--gold-dark);
+
+  line-height: 1.3;
+
+  margin-bottom: .5rem;
+
+}
+
+.center-subtitle {
+
+  font-size: .72rem;
+
+  color: var(--ink-faint);
+
+  line-height: 1.6;
+
+  max-width: 280px;
+
+}
+
+.center-legend {
+
+  display: grid;
+
+  grid-template-columns: 1fr 1fr;
+
+  gap: 4px 10px;
+
+  margin-top: .75rem;
+
+  text-align: left;
+
+}
+
+.leg-item {
+
+  display: flex;
+
+  align-items: center;
+
+  gap: 5px;
+
+  font-size: .68rem;
+
+  color: var(--ink-light);
+
+  cursor: pointer;
+
+  padding: 2px 4px;
+
+  border-radius: 2px;
+
+  transition: background .15s;
+
+}
+
+.leg-item:hover { background: rgba(201,146,42,0.12); }
+
+.leg-dot {
+
+  width: 9px; height: 9px;
+
+  border-radius: 2px;
+
+  flex-shrink: 0;
+
+}
+
+
+
+/* ===================== BOARD CELLS ===================== */
+
+.cell {
+
+  border: 0.5px solid var(--parchment-shadow);
+
+  display: flex;
+
+  flex-direction: column;
+
+  align-items: center;
+
+  justify-content: center;
+
+  cursor: pointer;
+
+  position: relative;
+
+  transition: filter .15s, transform .1s;
+
+  overflow: hidden;
+
+  background: var(--parchment);
+
+  padding: 2px;
+
+}
+
+.cell:hover {
+
+  filter: brightness(1.05);
+
+  z-index: 10;
+
+  transform: scale(1.04);
+
+  box-shadow: 0 2px 12px rgba(44,24,16,0.25);
+
+}
+
+.cell.active {
+
+  outline: 2.5px solid var(--gold);
+
+  outline-offset: -2px;
+
+  z-index: 20;
+
+}
+
+
+
+/* Color stripe on top of property cells */
+
+.cell-stripe {
+
+  position: absolute;
+
+  top: 0; left: 0; right: 0;
+
+  height: 10px;
+
+  flex-shrink: 0;
+
+}
+
+/* Left side cells: stripe on right */
+
+.cell-left .cell-stripe { top: 0; left: auto; right: 0; bottom: 0; width: 10px; height: auto; }
+
+/* Right side cells: stripe on left */
+
+.cell-right .cell-stripe { top: 0; right: auto; left: 0; bottom: 0; width: 10px; height: auto; }
+
+/* Top row: stripe on bottom */
+
+.cell-top .cell-stripe { top: auto; bottom: 0; left: 0; right: 0; height: 10px; width: auto; }
+
+
+
+.cell-name {
+
+  font-size: .56rem;
+
+  font-family: var(--font-serif);
+
+  color: var(--ink-light);
+
+  text-align: center;
+
+  line-height: 1.3;
+
+  padding: 1px 2px;
+
+  margin-top: 2px;
+
+}
+
+.cell-icon { font-size: 1rem; line-height: 1; }
+
+.cell-price {
+
+  font-size: .52rem;
+
+  color: var(--ink-faint);
+
+  margin-top: 1px;
+
+}
+
+
+
+/* Corner cells */
+
+.cell-corner {
+
+  display: flex;
+
+  flex-direction: column;
+
+  align-items: center;
+
+  justify-content: center;
+
+  background: var(--parchment-dark);
+
+  border: 1px solid var(--parchment-shadow);
+
+}
+
+.cell-corner .corner-icon { font-size: 1.5rem; }
+
+.cell-corner .corner-label {
+
+  font-size: .6rem;
+
+  font-family: var(--font-serif);
+
+  color: var(--ink-light);
+
+  text-align: center;
+
+  line-height: 1.3;
+
+  margin-top: 2px;
+
+}
+
+
+
+/* Special cells */
+
+.cell-railroad .cell-icon { font-size: 1.1rem; }
+
+.cell-utility .cell-icon { font-size: 1.1rem; }
+
+.cell-chance { background: linear-gradient(135deg, #fff8e1, #ffe082); }
+
+.cell-chest { background: linear-gradient(135deg, #e8f5e9, #a5d6a7); }
+
+.cell-tax { background: linear-gradient(135deg, #fce4ec, #f48fb1); }
+
+
+
+/* Zone colors */
+
+.zone-purple  { background-color: var(--purple-zone) !important; }
+
+.zone-ltblue  { background-color: var(--ltblue-zone) !important; }
+
+.zone-pink    { background-color: var(--pink-zone) !important; }
+
+.zone-orange  { background-color: var(--orange-zone) !important; }
+
+.zone-red     { background-color: var(--red-zone) !important; }
+
+.zone-yellow  { background-color: var(--yellow-zone) !important; }
+
+.zone-green   { background-color: var(--green-zone) !important; }
+
+.zone-dkblue  { background-color: var(--dkblue-zone) !important; }
+
+
+
+/* ===================== SIDE PANEL ===================== */
+
+#panel {
+
+  grid-column: 2;
+
+  grid-row: 1 / 3;
+
+  display: flex;
+
+  flex-direction: column;
+
+  gap: 1rem;
+
+}
+
+
+
+/* Panel card base */
+
+.pcard {
+
+  background: var(--panel-bg);
+
+  border: var(--border-ornate);
+
+  border-radius: var(--radius);
+
+  box-shadow: var(--shadow-paper);
+
+  overflow: hidden;
+
+}
+
+.pcard-head {
+
+  background: linear-gradient(135deg, var(--gold-dark), var(--gold));
+
+  padding: .6rem 1rem;
+
+  display: flex;
+
+  align-items: center;
+
+  gap: .5rem;
+
+}
+
+.pcard-head h2 {
+
+  font-family: var(--font-title);
+
+  font-size: 1rem;
+
+  color: var(--parchment);
+
+  letter-spacing: .05em;
+
+}
+
+.pcard-head .head-icon { font-size: 1.1rem; }
+
+.pcard-body { padding: .85rem 1rem; }
+
+
+
+/* ===================== INFO PANEL ===================== */
+
+#info-panel { flex-shrink: 0; }
+
+#info-default {
+
+  text-align: center;
+
+  padding: 1.5rem .5rem;
+
+  color: var(--ink-faint);
+
+}
+
+#info-default .idle-icon { font-size: 2.5rem; margin-bottom: .5rem; }
+
+#info-default p { font-size: .8rem; line-height: 1.6; }
+
+#info-content { display: none; }
+
+
+
+.info-zone-bar {
+
+  height: 8px;
+
+  border-radius: 2px;
+
+  margin-bottom: .75rem;
+
+}
+
+.info-name {
+
+  font-family: var(--font-title);
+
+  font-size: 1.15rem;
+
+  color: var(--ink);
+
+  margin-bottom: .25rem;
+
+}
+
+.info-invest-tag {
+
+  display: inline-flex;
+
+  align-items: center;
+
+  gap: 5px;
+
+  font-size: .72rem;
+
+  color: #fff;
+
+  padding: 3px 8px;
+
+  border-radius: 3px;
+
+  margin-bottom: .75rem;
+
+}
+
+.info-section { margin-bottom: .75rem; }
+
+.info-section-title {
+
+  font-size: .68rem;
+
+  font-weight: 600;
+
+  color: var(--gold-dark);
+
+  text-transform: uppercase;
+
+  letter-spacing: .08em;
+
+  margin-bottom: .3rem;
+
+  padding-bottom: .2rem;
+
+  border-bottom: 1px solid var(--parchment-shadow);
+
+}
+
+.info-section p {
+
+  font-size: .78rem;
+
+  color: var(--ink-light);
+
+  line-height: 1.65;
+
+}
+
+.info-stats {
+
+  display: grid;
+
+  grid-template-columns: 1fr 1fr;
+
+  gap: 6px;
+
+  margin-top: .5rem;
+
+}
+
+.info-stat {
+
+  background: var(--parchment-dark);
+
+  border-radius: 3px;
+
+  padding: .4rem .6rem;
+
+  text-align: center;
+
+}
+
+.info-stat-val {
+
+  font-family: var(--font-serif);
+
+  font-size: .9rem;
+
+  font-weight: 600;
+
+  color: var(--ink);
+
+}
+
+.info-stat-label {
+
+  font-size: .62rem;
+
+  color: var(--ink-faint);
+
+  margin-top: 1px;
+
+}
+
+.moat-badges {
+
+  display: flex;
+
+  flex-wrap: wrap;
+
+  gap: 4px;
+
+  margin-top: .4rem;
+
+}
+
+.moat-badge {
+
+  font-size: .65rem;
+
+  padding: 2px 7px;
+
+  border-radius: 10px;
+
+  background: var(--parchment-dark);
+
+  color: var(--ink-light);
+
+  border: 0.5px solid var(--parchment-shadow);
+
+}
+
+
+
+/* ===================== LESSON PANEL ===================== */
+
+#lesson-panel { flex: 1; overflow: hidden; display: flex; flex-direction: column; }
+
+.lesson-tabs {
+
+  display: flex;
+
+  overflow-x: auto;
+
+  background: var(--parchment-dark);
+
+  border-bottom: 1px solid var(--parchment-shadow);
+
+  scrollbar-width: none;
+
+  flex-shrink: 0;
+
+}
+
+.lesson-tabs::-webkit-scrollbar { display: none; }
+
+.ltab {
+
+  flex-shrink: 0;
+
+  padding: .45rem .7rem;
+
+  font-size: .7rem;
+
+  color: var(--ink-faint);
+
+  cursor: pointer;
+
+  border-bottom: 2px solid transparent;
+
+  transition: all .15s;
+
+  white-space: nowrap;
+
+  font-family: var(--font-serif);
+
+}
+
+.ltab:hover { color: var(--ink); background: rgba(201,146,42,0.08); }
+
+.ltab.active {
+
+  color: var(--gold-dark);
+
+  border-bottom-color: var(--gold);
+
+  background: var(--panel-bg);
+
+}
+
+.lesson-content {
+
+  padding: .85rem 1rem;
+
+  overflow-y: auto;
+
+  flex: 1;
+
+  font-size: .78rem;
+
+  line-height: 1.7;
+
+  color: var(--ink-light);
+
+}
+
+.lesson-content h3 {
+
+  font-family: var(--font-title);
+
+  font-size: 1rem;
+
+  color: var(--ink);
+
+  margin-bottom: .5rem;
+
+}
+
+.lesson-content h4 {
+
+  font-size: .78rem;
+
+  font-weight: 600;
+
+  color: var(--gold-dark);
+
+  margin: .75rem 0 .3rem;
+
+  text-transform: uppercase;
+
+  letter-spacing: .05em;
+
+}
+
+.lesson-content p { margin-bottom: .5rem; }
+
+.concept-card {
+
+  background: var(--parchment-dark);
+
+  border-left: 3px solid var(--gold);
+
+  padding: .5rem .7rem;
+
+  margin: .5rem 0;
+
+  border-radius: 0 3px 3px 0;
+
+  font-size: .76rem;
+
+}
+
+.concept-card strong {
+
+  display: block;
+
+  color: var(--ink);
+
+  margin-bottom: 2px;
+
+  font-family: var(--font-serif);
+
+}
+
+.compare-table {
+
+  width: 100%;
+
+  border-collapse: collapse;
+
+  font-size: .72rem;
+
+  margin: .5rem 0;
+
+}
+
+.compare-table th {
+
+  background: var(--parchment-dark);
+
+  padding: .3rem .5rem;
+
+  text-align: left;
+
+  font-weight: 600;
+
+  color: var(--gold-dark);
+
+  border-bottom: 1px solid var(--parchment-shadow);
+
+}
+
+.compare-table td {
+
+  padding: .28rem .5rem;
+
+  border-bottom: 0.5px solid var(--parchment-shadow);
+
+  color: var(--ink-light);
+
+}
+
+.compare-table tr:last-child td { border-bottom: none; }
+
+.tag-row {
+
+  display: flex; flex-wrap: wrap; gap: 4px; margin: .4rem 0;
+
+}
+
+.tag {
+
+  font-size: .65rem;
+
+  padding: 2px 8px;
+
+  border-radius: 10px;
+
+  border: 0.5px solid currentColor;
+
+}
+
+
+
+/* ===================== BOTTOM TOOL BAR ===================== */
+
+#toolbar {
+
+  grid-column: 1 / 3;
+
+  grid-row: 3;
+
+  display: flex;
+
+  justify-content: center;
+
+  gap: .75rem;
+
+  flex-wrap: wrap;
+
+  padding: .5rem 0;
+
+}
+
+.tool-btn {
+
+  background: rgba(201,146,42,0.12);
+
+  border: 1px solid var(--gold-dark);
+
+  color: var(--gold-light);
+
+  font-family: var(--font-serif);
+
+  font-size: .78rem;
+
+  padding: .45rem 1rem;
+
+  border-radius: 3px;
+
+  cursor: pointer;
+
+  transition: all .15s;
+
+  letter-spacing: .05em;
+
+}
+
+.tool-btn:hover {
+
+  background: rgba(201,146,42,0.25);
+
+  color: var(--parchment);
+
+}
+
+.tool-btn.active {
+
+  background: var(--gold-dark);
+
+  color: var(--parchment);
+
+}
+
+
+
+/* ===================== MODAL ===================== */
+
+#modal-overlay {
+
+  display: none;
+
+  position: fixed;
+
+  inset: 0;
+
+  background: rgba(20,10,5,0.75);
+
+  z-index: 100;
+
+  align-items: center;
+
+  justify-content: center;
+
+  padding: 1rem;
+
+}
+
+#modal-overlay.open { display: flex; }
+
+#modal {
+
+  background: var(--parchment);
+
+  border: 2px solid var(--gold);
+
+  border-radius: var(--radius);
+
+  max-width: 560px;
+
+  width: 100%;
+
+  max-height: 85vh;
+
+  overflow-y: auto;
+
+  box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+
+  animation: modalIn .2s ease;
+
+}
+
+@keyframes modalIn {
+
+  from { opacity: 0; transform: translateY(20px) scale(.97); }
+
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+
+}
+
+.modal-head {
+
+  background: linear-gradient(135deg, var(--gold-dark), var(--gold));
+
+  padding: .85rem 1.25rem;
+
+  display: flex;
+
+  align-items: center;
+
+  justify-content: space-between;
+
+}
+
+.modal-head h2 {
+
+  font-family: var(--font-title);
+
+  font-size: 1.1rem;
+
+  color: var(--parchment);
+
+}
+
+.modal-close {
+
+  background: none;
+
+  border: none;
+
+  color: var(--parchment);
+
+  font-size: 1.3rem;
+
+  cursor: pointer;
+
+  line-height: 1;
+
+  padding: 0 .25rem;
+
+}
+
+.modal-body { padding: 1.25rem; font-size: .82rem; line-height: 1.75; color: var(--ink-light); }
+
+.modal-body h3 { font-family: var(--font-title); color: var(--ink); margin: .75rem 0 .3rem; }
+
+.modal-body p { margin-bottom: .6rem; }
+
+.modal-body blockquote {
+
+  border-left: 3px solid var(--gold);
+
+  padding: .4rem .75rem;
+
+  margin: .6rem 0;
+
+  color: var(--ink);
+
+  font-style: italic;
+
+  background: var(--parchment-dark);
+
+  border-radius: 0 3px 3px 0;
+
+  font-family: var(--font-serif);
+
+}
+
+
+
+/* ===================== SCENARIO GAME ===================== */
+
+#scenario-panel {
+
+  display: none;
+
+  grid-column: 1 / 3;
+
+  background: var(--panel-bg);
+
+  border: var(--border-ornate);
+
+  border-radius: var(--radius);
+
+  box-shadow: var(--shadow-paper);
+
+  overflow: hidden;
+
+}
+
+#scenario-panel.show { display: block; }
+
+.scenario-head {
+
+  background: linear-gradient(135deg, #1a3a6b, #2c5aa0);
+
+  padding: .75rem 1.25rem;
+
+  color: var(--parchment);
+
+  font-family: var(--font-title);
+
+  font-size: 1rem;
+
+  display: flex;
+
+  align-items: center;
+
+  justify-content: space-between;
+
+}
+
+.scenario-body { padding: 1rem 1.25rem; }
+
+#scenario-question {
+
+  font-family: var(--font-serif);
+
+  font-size: .88rem;
+
+  color: var(--ink);
+
+  line-height: 1.7;
+
+  margin-bottom: 1rem;
+
+  padding: .75rem;
+
+  background: var(--parchment-dark);
+
+  border-radius: 3px;
+
+  border-left: 3px solid var(--dkblue-zone);
+
+}
+
+.scenario-options { display: flex; flex-direction: column; gap: .5rem; }
+
+.scenario-opt {
+
+  background: var(--parchment);
+
+  border: 1px solid var(--parchment-shadow);
+
+  border-radius: 3px;
+
+  padding: .6rem 1rem;
+
+  font-size: .8rem;
+
+  color: var(--ink-light);
+
+  cursor: pointer;
+
+  transition: all .15s;
+
+  text-align: left;
+
+  font-family: var(--font-body);
+
+}
+
+.scenario-opt:hover { background: var(--parchment-dark); border-color: var(--gold); color: var(--ink); }
+
+.scenario-opt.correct { background: #e8f5e9; border-color: #27ae60; color: #1a5230; }
+
+.scenario-opt.wrong { background: #fce4ec; border-color: #c0392b; color: #7b241c; }
+
+#scenario-feedback {
+
+  display: none;
+
+  margin-top: .75rem;
+
+  padding: .75rem;
+
+  border-radius: 3px;
+
+  font-size: .8rem;
+
+  line-height: 1.65;
+
+}
+
+#scenario-feedback.show { display: block; }
+
+#scenario-feedback.correct-fb { background: #e8f5e9; border-left: 3px solid #27ae60; }
+
+#scenario-feedback.wrong-fb { background: #fce4ec; border-left: 3px solid #c0392b; }
+
+.scenario-nav {
+
+  display: flex;
+
+  gap: .5rem;
+
+  margin-top: .75rem;
+
+  justify-content: flex-end;
+
+}
+
+.scn-btn {
+
+  background: var(--gold-dark);
+
+  border: none;
+
+  color: var(--parchment);
+
+  font-family: var(--font-serif);
+
+  font-size: .78rem;
+
+  padding: .4rem .9rem;
+
+  border-radius: 3px;
+
+  cursor: pointer;
+
+  transition: background .15s;
+
+}
+
+.scn-btn:hover { background: var(--gold); }
+
+.scn-btn:disabled { opacity: .5; cursor: not-allowed; }
+
+#scenario-progress {
+
+  font-size: .7rem;
+
+  color: var(--ink-faint);
+
+  align-self: center;
+
+  flex: 1;
+
+}
+
+#score-display {
+
+  font-family: var(--font-serif);
+
+  font-size: .78rem;
+
+  color: var(--gold-dark);
+
+}
+
+
+
+/* ===================== RESPONSIVE ===================== */
+
+@media (max-width: 900px) {
+
+  #app {
+
+    grid-template-columns: 1fr;
+
+    grid-template-rows: auto auto auto;
+
+  }
+
+  #board-wrap { grid-column: 1; grid-row: 1; }
+
+  #panel { grid-column: 1; grid-row: 2; }
+
+  #scenario-panel { grid-column: 1; }
+
+}
+
+
+
+/* ===================== SCROLLBAR ===================== */
+
+::-webkit-scrollbar { width: 5px; }
+
+::-webkit-scrollbar-track { background: var(--parchment-dark); }
+
+::-webkit-scrollbar-thumb { background: var(--parchment-shadow); border-radius: 3px; }
+
+
+
+/* Entrance animation */
+
+#board { animation: fadeUp .6s ease both; }
+
+#panel { animation: fadeUp .6s ease .15s both; }
+
+@keyframes fadeUp {
+
+  from { opacity: 0; transform: translateY(24px); }
+
+  to   { opacity: 1; transform: translateY(0); }
+
+}
+
+
+
+.pulse { animation: pulse 1.5s ease infinite; }
+
+@keyframes pulse {
+
+  0%, 100% { opacity: 1; }
+
+  50% { opacity: .6; }
+
+}
+
+</style>
+
+</head>
+
+<body>
+
+
+
+<div id="header">
+
+  <h1>大富翁投资学</h1>
+
+  <p>互动经济地图 · 点击棋盘格子探索投资知识</p>
+
+</div>
+
+
+
+<div id="app">
+
+
+
+<!-- ========== BOARD ========== -->
+
+<div id="board-wrap">
+
+  <div id="board">
+
+    <!-- Board cells will be injected by JS -->
+
+    <div id="board-center">
+
+      <div class="center-title">大富翁<br>投资学</div>
+
+      <p class="center-subtitle">点击任意格子<br>探索对应的投资知识</p>
+
+      <div class="center-legend" id="center-legend"></div>
+
+    </div>
+
+  </div>
+
+
+
+  <!-- Toolbar -->
+
+  <div id="toolbar">
+
+    <button class="tool-btn active" onclick="setMode('explore')">🗺️ 探索模式</button>
+
+    <button class="tool-btn" onclick="setMode('scenario')">🎲 情景挑战</button>
+
+    <button class="tool-btn" onclick="openModal('rules')">📜 棋盘规则</button>
+
+    <button class="tool-btn" onclick="openModal('map')">🌲 森林地图</button>
+
+  </div>
+
+</div>
+
+
+
+<!-- ========== SIDE PANEL ========== -->
+
+<div id="panel">
+
+
+
+  <!-- Info card -->
+
+  <div class="pcard" id="info-panel">
+
+    <div class="pcard-head">
+
+      <span class="head-icon">📋</span>
+
+      <h2>格子详情</h2>
+
+    </div>
+
+    <div class="pcard-body">
+
+      <div id="info-default">
+
+        <div class="idle-icon">🎯</div>
+
+        <p>点击棋盘上的任意格子<br>查看对应的投资知识与概念</p>
+
+      </div>
+
+      <div id="info-content"></div>
+
+    </div>
+
+  </div>
+
+
+
+  <!-- Lesson panel -->
+
+  <div class="pcard" id="lesson-panel">
+
+    <div class="pcard-head">
+
+      <span class="head-icon">📚</span>
+
+      <h2>八课体系</h2>
+
+    </div>
+
+    <div class="lesson-tabs" id="lesson-tabs"></div>
+
+    <div class="lesson-content" id="lesson-content"></div>
+
+  </div>
+
+
+
+</div>
+
+
+
+<!-- ========== SCENARIO PANEL ========== -->
+
+<div id="scenario-panel">
+
+  <div class="scenario-head">
+
+    <span>🎲 情景决策挑战</span>
+
+    <span id="score-display">得分：0 / 0</span>
+
+  </div>
+
+  <div class="scenario-body">
+
+    <div id="scenario-question"></div>
+
+    <div class="scenario-options" id="scenario-options"></div>
+
+    <div id="scenario-feedback"></div>
+
+    <div class="scenario-nav">
+
+      <span id="scenario-progress"></span>
+
+      <button class="scn-btn" id="scn-next" onclick="nextScenario()" disabled>下一题 →</button>
+
+    </div>
+
+  </div>
+
+</div>
+
+
+
+</div><!-- end #app -->
+
+
+
+<!-- ========== MODAL ========== -->
+
+<div id="modal-overlay" onclick="closeModalOutside(event)">
+
+  <div id="modal">
+
+    <div class="modal-head">
+
+      <h2 id="modal-title"></h2>
+
+      <button class="modal-close" onclick="closeModal()">✕</button>
+
+    </div>
+
+    <div class="modal-body" id="modal-body"></div>
+
+  </div>
+
+</div>
+
+
+
+<script>
+
+/* =====================================================================
+
+   DATA
+
+   ===================================================================== */
+
+
+
+const ZONES = {
+
+  purple:  { name:'紫色区', color:'var(--purple-zone)',  invest:'货币市场基金',  emoji:'🌿', risk:'★☆☆☆☆', ret:'1.5—2.5%',  desc:'棋盘起点附近，必经之地。低收益但流动性极强，是资金的停泊港。对应你的第一桶水——应急储备。', moat:['地段垄断','必经性'], lesson:3 },
+
+  ltblue:  { name:'浅蓝区', color:'var(--ltblue-zone)',  invest:'短期债券基金',  emoji:'💧', risk:'★★☆☆☆', ret:'3—4%',     desc:'棋盘第一边，价格适中。稳健收益，低波动，适合三年以内的中期目标资金。利率上升时有小幅压力。', moat:['信用背书','利率稳定'], lesson:2 },
+
+  pink:    { name:'粉红区', color:'var(--pink-zone)',    invest:'中期债券基金',  emoji:'🌸', risk:'★★☆☆☆', ret:'4—6%',     desc:'棋盘第二边，略高一档。收益提升，可作为资产组合的稳定器。注意利率与价格的跷跷板关系。', moat:['转换成本','信用评级'], lesson:2 },
+
+  orange:  { name:'橙色区⭐', color:'var(--orange-zone)', invest:'沪深300指数基金', emoji:'🏆', risk:'★★★☆☆', ret:'8—12%',    desc:'被踩中统计概率最高的区域——监狱出口附近，玩家频繁出狱后必经。对应沪深300指数基金，是定投首选。高流量+合理成本=最佳性价比。', moat:['网络效应','规模优势','被动复制'], lesson:4 },
+
+  red:     { name:'红色区', color:'var(--red-zone)',     invest:'蓝筹股票基金',  emoji:'🔥', risk:'★★★★☆', ret:'10—15%',   desc:'棋盘第三边，中高价位区。代表经济中坚力量，成长性强但波动加大。需要5年以上投资周期。', moat:['品牌护城河','规模壁垒'], lesson:4 },
+
+  yellow:  { name:'黄色区', color:'var(--yellow-zone)',  invest:'行业主题基金',  emoji:'💡', risk:'★★★★☆', ret:'10—18%',   desc:'紧挨机会卡，被机会卡送来的概率加成。对应消费、医疗等有护城河的行业主题基金，有额外的结构性优势。', moat:['网络效应','品牌溢价'], lesson:4 },
+
+  green:   { name:'绿色区', color:'var(--green-zone)',   invest:'个股精选',      emoji:'🌳', risk:'★★★★★', ret:'不确定',   desc:'棋盘高价区，购入门槛高，建设成本大。对应个股研究——需要深度能力圈，不懂不投。高收益高风险，需要第一性原理分析。', moat:['能力圈边界','深度研究'], lesson:5 },
+
+  dkblue:  { name:'深蓝区👑', color:'var(--dkblue-zone)', invest:'顶级护城河个股', emoji:'💎', risk:'★★★★★', ret:'长期15%+',  desc:'最贵、最稀缺的地段——公园广场与地中海大道。对应茅台级别的顶级护城河企业。可遇不可求，重仓需要极强认知，轻易不动，一旦买入长期持有。', moat:['品牌垄断','定价权','无形资产'], lesson:5 },
+
+};
+
+
+
+// Full board layout (clockwise from bottom-right corner)
+
+// Format: [type, id, display, data]
+
+// type: corner/property/railroad/utility/chance/chest/tax/special
+
+const BOARD_BOTTOM = [ // left to right, row 11
+
+  { type:'corner', id:'go',      icon:'🟢', name:'起点\nGO', corner:true },
+
+  { type:'property', id:'med',   zone:'purple', name:'地中海\n大道',  price:'60' },
+
+  { type:'chest',    id:'cc1',   icon:'📦', name:'命运卡' },
+
+  { type:'property', id:'blt',   zone:'purple', name:'波罗的海\n大道', price:'60' },
+
+  { type:'tax',      id:'itax',  icon:'💸', name:'所得税\n¥200' },
+
+  { type:'railroad', id:'rr1',   icon:'🚂', name:'Reading\n铁路',     price:'200' },
+
+  { type:'property', id:'ori',   zone:'ltblue', name:'东方\n大道',   price:'100' },
+
+  { type:'chance',   id:'ch1',   icon:'🃏', name:'机会卡' },
+
+  { type:'property', id:'vmt',   zone:'ltblue', name:'佛蒙特\n大道',  price:'100' },
+
+  { type:'property', id:'con',   zone:'ltblue', name:'康涅狄格\n大道', price:'120' },
+
+  { type:'corner',   id:'jail',  icon:'🏛️', name:'监狱\n参观',  corner:true },
+
+];
+
+const BOARD_LEFT = [ // top to bottom, column 1 (rows 2-10)
+
+  { type:'property', id:'stc',   zone:'pink',   name:'圣查理\n广场',  price:'140' },
+
+  { type:'utility',  id:'elec',  icon:'⚡', name:'电力\n公司',        price:'150' },
+
+  { type:'property', id:'sts',   zone:'pink',   name:'各州\n大道',   price:'140' },
+
+  { type:'property', id:'stj',   zone:'pink',   name:'弗吉尼亚\n大道', price:'160' },
+
+  { type:'railroad', id:'rr2',   icon:'🚂', name:'宾州\n铁路',        price:'200' },
+
+  { type:'property', id:'sjp',   zone:'orange', name:'圣詹姆斯\n广场', price:'180' },
+
+  { type:'chest',    id:'cc2',   icon:'📦', name:'命运卡' },
+
+  { type:'property', id:'ten',   zone:'orange', name:'田纳西\n大道',  price:'180' },
+
+  { type:'property', id:'nyk',   zone:'orange', name:'纽约\n大道',   price:'200' },
+
+];
+
+const BOARD_TOP = [ // right to left, row 1
+
+  { type:'corner',   id:'fp',    icon:'🅿️', name:'免费\n停车',  corner:true },
+
+  { type:'property', id:'ken',   zone:'red',    name:'肯塔基\n大道',  price:'220' },
+
+  { type:'chance',   id:'ch2',   icon:'🃏', name:'机会卡' },
+
+  { type:'property', id:'ind',   zone:'red',    name:'印第安纳\n大道', price:'220' },
+
+  { type:'property', id:'ill',   zone:'red',    name:'伊利诺伊\n大道', price:'240' },
+
+  { type:'railroad', id:'rr3',   icon:'🚂', name:'B&O\n铁路',         price:'200' },
+
+  { type:'property', id:'atl',   zone:'yellow', name:'大西洋\n大道',  price:'260' },
+
+  { type:'property', id:'ven',   zone:'yellow', name:'文特诺\n大道',  price:'260' },
+
+  { type:'utility',  id:'water', icon:'💧', name:'自来水\n公司',       price:'150' },
+
+  { type:'property', id:'mvn',   zone:'yellow', name:'马文\n花园',    price:'280' },
+
+  { type:'corner',   id:'gtj',   icon:'👮', name:'直接\n进监狱', corner:true },
+
+];
+
+const BOARD_RIGHT = [ // bottom to top, column 11 (rows 10-2)
+
+  { type:'property', id:'pac',   zone:'green',  name:'太平洋\n大道',  price:'300' },
+
+  { type:'property', id:'nca',   zone:'green',  name:'北卡罗来纳\n大道', price:'300' },
+
+  { type:'chest',    id:'cc3',   icon:'📦', name:'命运卡' },
+
+  { type:'property', id:'pna',   zone:'green',  name:'宾夕法尼亚\n大道', price:'320' },
+
+  { type:'railroad', id:'rr4',   icon:'🚂', name:'短线\n铁路',         price:'200' },
+
+  { type:'chance',   id:'ch3',   icon:'🃏', name:'机会卡' },
+
+  { type:'property', id:'pp',    zone:'dkblue', name:'公园\n广场',   price:'350' },
+
+  { type:'tax',      id:'ltax',  icon:'💸', name:'奢侈税\n¥100' },
+
+  { type:'property', id:'bw',    zone:'dkblue', name:'地中海\n宝道',  price:'400' },
+
+];
+
+
+
+const LESSONS = [
+
+  {
+
+    tab: '第一课', title: '起点与本金',
+
+    content: `<h3>起点与本金——棋盘上最残酷的真相</h3>
+
+    <p>所有玩家站在起点，手里拿着同样的钞票。但游戏在第一个人掷骰子之前，就已经开始分化了。</p>
+
+    <h4>三种资本</h4>
+
+    <div class="concept-card"><strong>经济资本</strong>初始现金，本金，工资存款。你的定投300元就是你的经济资本积累。</div>
+
+    <div class="concept-card"><strong>文化资本（最重要）</strong>对规则的理解深度——身体化直觉、客观化工具、制度化资历。这门课程本身就是在帮你积累文化资本。</div>
+
+    <div class="concept-card"><strong>社会资本</strong>信息渠道与谈判能力。信息差就是收益差。</div>
+
+    <h4>经过起点的¥200</h4>
+
+    <p>每圈固定收入，不管这一圈过得多惨都会有。这对应你每月的<strong>定投扣款</strong>——永不停止的现金流才是最重要的生命线。</p>
+
+    <div class="concept-card"><strong>核心结论</strong>起点不同是事实，但文化资本可以从今天开始积累，且积累过程可以超越经济资本的先发优势。</div>`
+
+  },
+
+  {
+
+    tab: '第二课', title: '地产即股权',
+
+    content: `<h3>地产即股权——你买的是一台印钞机</h3>
+
+    <p>当你买下台北大道，你买到的不是一张卡——是一台<strong>别人路过就要付钱给你</strong>的机器。这就是股权的本质。</p>
+
+    <h4>两种玩家的命运</h4>
+
+    <table class="compare-table">
+
+      <tr><th>类型</th><th>关注点</th><th>行为模式</th></tr>
+
+      <tr><td>投机者</td><td>价格涨跌</td><td>追涨杀跌，频繁换手</td></tr>
+
+      <tr><td>收租者</td><td>现金流</td><td>长期持有，租金再投入</td></tr>
+
+    </table>
+
+    <h4>建房子的复利魔法</h4>
+
+    <div class="concept-card"><strong>空地租金¥22 → 酒店租金¥950</strong>每一笔租金再投入建房，让同一台机器的产出能力指数级扩张。这就是股息再投资（DRIP）的棋盘版。</div>
+
+    <h4>巴菲特核心原则</h4>
+
+    <p>「当我们买入一只股票，我们是在买入一门生意，不是在买入一张纸。」</p>`
+
+  },
+
+  {
+
+    tab: '第三课', title: '现金为王',
+
+    content: `<h3>现金为王——三桶水体系</h3>
+
+    <p>2008年，某房企拥有数十亿资产，却因无法支付工人工资而破产。它不是穷死的——它是<strong>渴死的</strong>。</p>
+
+    <h4>流动性危机 vs 偿付危机</h4>
+
+    <div class="concept-card"><strong>偿付危机</strong>总负债 > 总资产，真正的"穷"，难以救治。</div>
+
+    <div class="concept-card"><strong>流动性危机</strong>资产丰厚但无法变现，"有钱用不上"。理论上可救，但窗口极短。</div>
+
+    <h4>三桶水框架</h4>
+
+    <table class="compare-table">
+
+      <tr><th>桶</th><th>用途</th><th>工具</th><th>金额</th></tr>
+
+      <tr><td>第一桶🟢</td><td>应急储备</td><td>货币基金</td><td>3—6个月支出</td></tr>
+
+      <tr><td>第二桶🔵</td><td>机会储备</td><td>短债基金</td><td>可投资额15%</td></tr>
+
+      <tr><td>第三桶🟠</td><td>增值资产</td><td>指数基金</td><td>剩余全部</td></tr>
+
+    </table>
+
+    <p><strong>核心原则：永远不要让现金归零。</strong>定投者的敌人不是下跌，是恐惧导致的停止定投。</p>`
+
+  },
+
+  {
+
+    tab: '第四课', title: '护城河',
+
+    content: `<h3>护城河——让竞争对手望而却步</h3>
+
+    <p>巴菲特：「我在寻找被宽阔护城河包围的经济城堡。」</p>
+
+    <h4>五种护城河形态</h4>
+
+    <div class="concept-card"><strong>无形资产</strong>品牌、专利。茅台的品牌护城河宽达数十年——你可以建酒厂，但无法在五年内建出"茅台"两个字的文化认同。</div>
+
+    <div class="concept-card"><strong>转换成本</strong>微信13亿用户——离开成本比任何竞品优势都高。</div>
+
+    <div class="concept-card"><strong>网络效应</strong>用的人越多越值钱。淘宝、美团的飞轮效应。</div>
+
+    <div class="concept-card"><strong>成本优势</strong>比竞争对手便宜，还能赚更多。拼多多、沃尔玛。</div>
+
+    <div class="concept-card"><strong>高效规模</strong>市场只够一家活。自来水、高铁、城市电网。</div>
+
+    <h4>三秒判断法</h4>
+
+    <p>① 竞争对手能复制吗？② 优势会变弱吗？③ 失去管理层多久能恢复？三个"否"→宽护城河。</p>`
+
+  },
+
+  {
+
+    tab: '第五课', title: '黑天鹅',
+
+    content: `<h3>机会与命运卡——黑天鹅来临时</h3>
+
+    <p>塔勒布的黑天鹅：<strong>极度罕见、冲击力极强、事后显得理所当然</strong>。</p>
+
+    <h4>三只真实的黑天鹅</h4>
+
+    <table class="compare-table">
+
+      <tr><th>事件</th><th>市场反应</th><th>护城河公司结局</th></tr>
+
+      <tr><td>2003非典</td><td>恐慌暴跌</td><td>茅台此后5年涨20倍</td></tr>
+
+      <tr><td>2008金融危机</td><td>美股跌50%+</td><td>巴菲特抄底大赚</td></tr>
+
+      <tr><td>2020新冠</td><td>熔断4次</td><td>不到2个月触底反弹</td></tr>
+
+    </table>
+
+    <div class="concept-card"><strong>关键判断框架</strong>危机攻击的是护城河本身，还是只是暂时减少客流？护城河完好→危机是机会；护城河被摧毁→谨慎。</div>
+
+    <h4>如何判断公司能扛过危机？</h4>
+
+    <p>① 护城河有没有被直接攻击？② 资产负债率低于40%？③ 产品刚需程度？④ 历史危机中的表现？四个✓→可以加仓。</p>`
+
+  },
+
+  {
+
+    tab: '第六课', title: '入狱与杠杆',
+
+    content: `<h3>入狱与流动性危机——战略性等待</h3>
+
+    <p>大富翁游戏中后期，进监狱反而是一种保护——外面全是对手的酒店，在监狱里你不会踩雷，还能观察局势。</p>
+
+    <h4>LTCM的覆灭</h4>
+
+    <p>1998年，诺贝尔奖得主组成的基金，25倍杠杆，数学模型完美——然后俄罗斯危机爆发，死亡螺旋开始：亏损→追保证金→被迫卖出→价格下跌→更多亏损。四个月亏损46亿美元。</p>
+
+    <h4>杠杆的双刃性</h4>
+
+    <div class="concept-card"><strong>顺风时</strong>1万本金+4万借款，市场涨20%→自有资金收益率100%</div>
+
+    <div class="concept-card"><strong>逆风时</strong>同样结构，市场跌20%→自有资金归零</div>
+
+    <h4>战略性持有现金</h4>
+
+    <p>巴菲特2005—2007年持有大量现金，被嘲笑"跟不上时代"。2008年崩盘后，他用那些"无所事事的现金"成就了职业生涯最大的财富积累。<strong>现金是武器，不是负担。</strong></p>`
+
+  },
+
+  {
+
+    tab: '第七课', title: '谈判与定价权',
+
+    content: `<h3>谈判与定价权——为什么有些公司可以永远涨价</h3>
+
+    <p>定价权 = 主动提高价格，且不流失客户。两个条件缺一不可。</p>
+
+    <h4>谈判的核心真相</h4>
+
+    <div class="concept-card"><strong>资产的价值不是标价，而是它对对方的战略意义</strong>你的那块橙色地产，不只值¥180——它值"阻止对手集齐同色、无法建房"的战略价值。</div>
+
+    <h4>三种定价权形态</h4>
+
+    <table class="compare-table">
+
+      <tr><th>类型</th><th>典型案例</th><th>识别信号</th></tr>
+
+      <tr><td>垄断定价</td><td>茅台飞天</td><td>无可替代品</td></tr>
+
+      <tr><td>品牌溢价</td><td>爱马仕、苹果</td><td>消费者愿意溢价</td></tr>
+
+      <tr><td>成本转移</td><td>SAP企业软件</td><td>续费率90%+</td></tr>
+
+    </table>
+
+    <h4>巴菲特双倍价格测试</h4>
+
+    <p>如果这家公司明天把价格翻倍，市场份额损失多少？损失很小→强定价权→宽护城河→抗通胀利器。</p>`
+
+  },
+
+  {
+
+    tab: '第八课', title: '赢家的终局',
+
+    content: `<h3>赢家的终局——财富分化的数学必然</h3>
+
+    <p>大富翁后半段，财富以不可阻挡的速度向一个人集中——这不是游戏缺陷，这是复利在有限棋盘上的物理呈现。</p>
+
+    <h4>马太效应</h4>
+
+    <div class="concept-card"><strong>凡有的，还要加给他</strong>同样10%收益率，¥100万赚¥10万；¥10万赚¥1万。差距永远在扩大。</div>
+
+    <h4>你的反制武器：时间</h4>
+
+    <p>你的"小"是战略优势：极度灵活、暴跌时加仓无压力、命运卡损失有限。巴菲特说，若只管理小资金，他有把握每年赚50%。</p>
+
+    <h4>赢家的五个条件</h4>
+
+    <table class="compare-table">
+
+      <tr><th>条件</th><th>核心动作</th></tr>
+
+      <tr><td>现金流永不断裂</td><td>三桶水，定投永不停</td></tr>
+
+      <tr><td>持有护城河资产</td><td>橙色指数+深蓝个股</td></tr>
+
+      <tr><td>收益再投入机器</td><td>股息再投，逐步加大定投</td></tr>
+
+      <tr><td>黑天鹅中逆向出手</td><td>第二桶水是子弹</td></tr>
+
+      <tr><td>时间——最终裁判</td><td>从今天开始，持续20年</td></tr>
+
+    </table>`
+
+  }
+
+];
+
+
+
+const SCENARIOS = [
+
+  {
+
+    q: '游戏进行到中盘，你每月定投300元的指数基金账面亏损了18%。朋友们都在讨论"这次市场真的不一样了"。你应该：',
+
+    opts: [
+
+      { text: 'A. 立刻暂停定投，等市场回稳再继续', correct: false, fb: '❌ 这是最典型的"恐惧驱动决策"。定投者的最大敌人不是下跌本身，而是在下跌时停止定投。暂停意味着你在最低价位放弃了积累份额的机会。' },
+
+      { text: 'B. 继续正常定投，按计划执行', correct: true, fb: '✅ 正确！定投的机制设计本身就是为了在波动中自动积累低价份额。账面亏损18%意味着你现在买到的份额比三个月前便宜了18%。坚持才能让复利发挥作用。' },
+
+      { text: 'C. 不仅继续定投，还用第二桶水（机会储备）额外加仓', correct: true, fb: '✅ 更进一步的正确做法！这正是第二桶水存在的意义——在市场恐惧时出手。历史上每一次这样的加仓，最终都带来了超额收益。' },
+
+      { text: 'D. 全部赎回，持有现金等待抄底时机', correct: false, fb: '❌ 这是"自以为能择时"的陷阱。没有人能精确预测底部。更危险的是：等你认为"安全了"再买入时，往往已经涨回原位或更高。' },
+
+    ]
+
+  },
+
+  {
+
+    q: '你的大富翁棋盘上，两块橙色地产中你持有一块。对手用"铁路一条+¥100现金"换你的橙色地产。你应该：',
+
+    opts: [
+
+      { text: 'A. 接受！铁路+现金合计超过橙色地产标价', correct: false, fb: '❌ 你犯了"按标价估值"的错误。你那块橙色地产不只值¥180——它的真正价值是"阻止对手集齐三块橙色、无法建房"的战略锁定权。一旦交出，对手建满橙色酒店，单次收租¥950。' },
+
+      { text: 'B. 拒绝，要求对方用更多资产换', correct: true, fb: '✅ 正确！谈判的核心不是"这个东西值多少"，而是"它对对方值多少"。对方比你更需要这块地——他无法建房。你的报价应该是：集齐三块橙色全归你，或对方支付远超标价的补偿。' },
+
+      { text: 'C. 先问对手手里的现金还剩多少', correct: true, fb: '✅ 聪明的第一步！了解对手的流动性状况，判断他承受压力的上限，是谈判前的必要情报收集。如果他现金紧张，你的谈判筹码更大。' },
+
+      { text: 'D. 无所谓，反正橙色地产一块也没用', correct: false, fb: '❌ 大错！即使只持有一块，它也是对手建房计划的关键障碍。战略封锁权往往比实际租金价值更高。' },
+
+    ]
+
+  },
+
+  {
+
+    q: '你正在评估一家公司值不值得在股市暴跌时买入。它的资产负债率为68%，历史PE百分位目前在22%，主营业务是销售品牌包装食品。你的判断是：',
+
+    opts: [
+
+      { text: 'A. PE百分位22%，极度低估，立刻重仓', correct: false, fb: '❌ 低估值≠安全买入。该公司资产负债率68%偏高（建议安全线<40%），意味着危机中有流动性风险。仅凭PE低便重仓，忽视了护城河压力测试的第二步。' },
+
+      { text: 'B. PE低估+品牌食品有定价权，可以适量买入，但仓位控制', correct: true, fb: '✅ 正确！品牌包装食品具有较强的护城河（消费者惯性+品牌转换成本），PE低估提供了安全边际。但68%的资产负债率是风险点，应控制仓位，不要全仓押注。' },
+
+      { text: 'C. 债务太高，完全不考虑', correct: false, fb: '❌ 过于保守。68%负债率较高但非极端，需要结合行业特性（食品行业普遍负债较高）、利息覆盖倍数等综合判断。单一指标决策会让你错过很多机会。' },
+
+      { text: 'D. 先查它在2008年和2020年危机中的表现', correct: true, fb: '✅ 这是正确的第一步！历史危机表现是最诚实的压力测试报告。如果两次都是"下跌→快速恢复→创新高"，说明护城河经过了真实检验。' },
+
+    ]
+
+  },
+
+  {
+
+    q: '你手里有三桶水：应急储备¥9000（6个月支出），机会储备¥1500，定投账户¥15000。突然遇到一个机会：朋友公司急需资金，愿意以8%年息借款¥10000，三个月后还。你应该：',
+
+    opts: [
+
+      { text: 'A. 动用机会储备+部分定投账户凑¥10000出借', correct: false, fb: '❌ 危险！机会储备是专为市场暴跌准备的子弹，提前动用会让你在真正的机会来临时没有弹药。更重要的是，赎回指数基金可能触发短期税务问题，且破坏了复利的连续性。' },
+
+      { text: 'B. 用应急储备出借，反正8%收益比货币基金高', correct: false, fb: '❌ 致命错误！应急储备是你永远不应动用的底线——它存在的意义就是当你"不得不"用钱时不会被迫卖出资产。动用应急储备，你就在大富翁里把防止破产的现金底牌打出去了。' },
+
+      { text: 'C. 婉拒，三桶水体系不允许任何一桶被动用于非计划用途', correct: true, fb: '✅ 正确！三桶水体系的纪律性是它有效的前提。8%的短期收益无法弥补体系被破坏后面临意外风险时的脆弱性。友情借款属于信用风险，不在体系的投资逻辑内。' },
+
+      { text: 'D. 看对方是否有抵押物，有的话可以考虑', correct: false, fb: '❌ 思路方向对，但结果不变。个人借贷不在三桶水体系的框架内，即使有抵押，处置抵押物也需要时间和精力，不符合"流动性第一"的原则。' },
+
+    ]
+
+  },
+
+  {
+
+    q: '你准备选一只指数基金长期定投。A基金：跟踪沪深300，年管理费0.15%；B基金：主动管理基金，近三年年化收益18%，年管理费1.5%。你选：',
+
+    opts: [
+
+      { text: 'A. 选B，近三年18%远超A，过去业绩证明基金经理能力强', correct: false, fb: '❌ "过去业绩代表未来收益"是投资里最危险的误区。巴菲特10年赌局的核心发现：扣除管理费后，长期来看大多数主动基金跑不赢指数。近三年的牛市行情可能掩盖了基金经理的真实水平。' },
+
+      { text: 'B. 选A，费率差异1.35%，20年后差距极大', correct: true, fb: '✅ 正确！费率差距看似很小，但20年复利后，差距可能超过30%的总资产。更重要的是，主动基金需要持续判断基金经理是否还"在状态"，而指数基金是最省心的长期工具。' },
+
+      { text: 'C. 先看B基金的最大回撤和夏普比率，而不只看收益', correct: true, fb: '✅ 进阶正确！仅看收益率不够，风险调整后收益才是真实水平。最大回撤反映极端情况下你能承受多大亏损，夏普比率衡量每单位风险带来多少收益。综合判断后大概率仍选A。' },
+
+      { text: 'D. 各买一半，分散风险', correct: false, fb: '❌ 这不是真正的分散。A和B都投A股，相关性极高，同涨同跌。更重要的是，额外支付1.5%管理费的那半仓，在长期维度是在侵蚀收益，不是在保护你。' },
+
+    ]
+
+  }
+
+];
+
+
+
+/* =====================================================================
+
+   BOARD RENDERING
+
+   ===================================================================== */
+
+
+
+function buildCell(data, dir) {
+
+  const div = document.createElement('div');
+
+  div.className = 'cell';
+
+  if (dir) div.classList.add('cell-' + dir);
+
+  if (data.corner) div.classList.add('cell-corner');
+
+
+
+  let html = '';
+
+
+
+  if (data.corner) {
+
+    html = `<div class="corner-icon">${data.icon}</div><div class="corner-label">${data.name.replace('\n','<br>')}</div>`;
+
+  } else if (data.type === 'property') {
+
+    const z = ZONES[data.zone];
+
+    html = `<div class="cell-stripe ${data.zone ? 'zone-'+data.zone : ''}"></div>
+
+            <div class="cell-name">${data.name.replace('\n','<br>')}</div>
+
+            <div class="cell-price">¥${data.price}</div>`;
+
+    div.onclick = () => showInfo(data, z);
+
+  } else if (data.type === 'railroad') {
+
+    html = `<div class="cell-icon">${data.icon}</div><div class="cell-name">${data.name.replace('\n','<br>')}</div>`;
+
+    div.onclick = () => showRailroadInfo(data);
+
+    div.classList.add('cell-railroad');
+
+  } else if (data.type === 'utility') {
+
+    html = `<div class="cell-icon">${data.icon}</div><div class="cell-name">${data.name.replace('\n','<br>')}</div>`;
+
+    div.onclick = () => showUtilityInfo(data);
+
+    div.classList.add('cell-utility');
+
+  } else if (data.type === 'chance') {
+
+    html = `<div class="cell-icon">${data.icon}</div><div class="cell-name">${data.name.replace('\n','<br>')}</div>`;
+
+    div.onclick = () => showSpecialInfo('chance');
+
+    div.classList.add('cell-chance');
+
+  } else if (data.type === 'chest') {
+
+    html = `<div class="cell-icon">${data.icon}</div><div class="cell-name">${data.name.replace('\n','<br>')}</div>`;
+
+    div.onclick = () => showSpecialInfo('chest');
+
+    div.classList.add('cell-chest');
+
+  } else if (data.type === 'tax') {
+
+    html = `<div class="cell-icon">${data.icon}</div><div class="cell-name">${data.name.replace('\n','<br>')}</div>`;
+
+    div.onclick = () => showSpecialInfo('tax');
+
+    div.classList.add('cell-tax');
+
+  } else if (data.type === 'corner') {
+
+    html = `<div class="corner-icon">${data.icon}</div><div class="corner-label">${data.name.replace('\n','<br>')}</div>`;
+
+    div.onclick = () => showCornerInfo(data.id);
+
+  }
+
+
+
+  div.innerHTML = html;
+
+  return div;
+
+}
+
+
+
+function renderBoard() {
+
+  const board = document.getElementById('board');
+
+  const center = document.getElementById('board-center');
+
+
+
+  // We'll place cells using grid positioning
+
+  // Bottom row: row 11, cols 1-11
+
+  BOARD_BOTTOM.forEach((d, i) => {
+
+    const cell = buildCell(d, i === 0 ? '' : i === 10 ? '' : 'bottom');
+
+    cell.style.gridColumn = (i + 1).toString();
+
+    cell.style.gridRow = '11';
+
+    board.insertBefore(cell, center);
+
+  });
+
+
+
+  // Left column: col 1, rows 10-2 (going up)
+
+  BOARD_LEFT.forEach((d, i) => {
+
+    const cell = buildCell(d, 'left');
+
+    cell.style.gridColumn = '1';
+
+    cell.style.gridRow = (10 - i).toString();
+
+    board.insertBefore(cell, center);
+
+  });
+
+
+
+  // Top row: row 1, cols 11-1 (right to left)
+
+  BOARD_TOP.forEach((d, i) => {
+
+    const cell = buildCell(d, i === 0 ? '' : i === 10 ? '' : 'top');
+
+    cell.style.gridColumn = (11 - i).toString();
+
+    cell.style.gridRow = '1';
+
+    board.insertBefore(cell, center);
+
+  });
+
+
+
+  // Right column: col 11, rows 2-10 (going up from bottom-right)
+
+  BOARD_RIGHT.forEach((d, i) => {
+
+    const cell = buildCell(d, 'right');
+
+    cell.style.gridColumn = '11';
+
+    cell.style.gridRow = (10 - i).toString();
+
+    board.insertBefore(cell, center);
+
+  });
+
+
+
+  // Render center legend
+
+  const legend = document.getElementById('center-legend');
+
+  Object.entries(ZONES).forEach(([key, z]) => {
+
+    legend.innerHTML += `<div class="leg-item" onclick="showZoneModal('${key}')">
+
+      <div class="leg-dot" style="background:${z.color}"></div>
+
+      <span>${z.invest}</span>
+
+    </div>`;
+
+  });
+
+}
+
+
+
+/* =====================================================================
+
+   INFO PANEL
+
+   ===================================================================== */
+
+
+
+let activeCell = null;
+
+function showInfo(data, zone) {
+
+  document.querySelectorAll('.cell').forEach(c => c.classList.remove('active'));
+
+  event.currentTarget.classList.add('active');
+
+
+
+  document.getElementById('info-default').style.display = 'none';
+
+  const c = document.getElementById('info-content');
+
+  c.style.display = 'block';
+
+
+
+  c.innerHTML = `
+
+    <div class="info-zone-bar" style="background:${zone.color}"></div>
+
+    <div class="info-name">${data.name.replace('\n', ' ')} ${zone.emoji}</div>
+
+    <div class="info-invest-tag" style="background:${zone.color}">${zone.invest}</div>
+
+    <div class="info-section">
+
+      <div class="info-section-title">格子信息</div>
+
+      <div class="info-stats">
+
+        <div class="info-stat"><div class="info-stat-val">¥${data.price}</div><div class="info-stat-label">购入价格</div></div>
+
+        <div class="info-stat"><div class="info-stat-val">${zone.ret}</div><div class="info-stat-label">参考年化</div></div>
+
+        <div class="info-stat"><div class="info-stat-val">${zone.risk}</div><div class="info-stat-label">风险等级</div></div>
+
+        <div class="info-stat"><div class="info-stat-val">${zone.name}</div><div class="info-stat-label">所属色区</div></div>
+
+      </div>
+
+    </div>
+
+    <div class="info-section">
+
+      <div class="info-section-title">投资对应</div>
+
+      <p>${zone.desc}</p>
+
+    </div>
+
+    <div class="info-section">
+
+      <div class="info-section-title">护城河类型</div>
+
+      <div class="moat-badges">${zone.moat.map(m => `<span class="moat-badge">${m}</span>`).join('')}</div>
+
+    </div>
+
+    <div class="info-section">
+
+      <div class="info-section-title">对应课程</div>
+
+      <p><a href="#" onclick="switchLesson(${zone.lesson-1}); return false;" style="color:var(--gold-dark)">→ 第${zone.lesson}课：${LESSONS[zone.lesson-1].title}</a></p>
+
+    </div>
+
+  `;
+
+}
+
+
+
+function showRailroadInfo(data) {
+
+  document.querySelectorAll('.cell').forEach(c => c.classList.remove('active'));
+
+  event.currentTarget.classList.add('active');
+
+  document.getElementById('info-default').style.display = 'none';
+
+  const c = document.getElementById('info-content');
+
+  c.style.display = 'block';
+
+  c.innerHTML = `
+
+    <div class="info-zone-bar" style="background:#444"></div>
+
+    <div class="info-name">🚂 ${data.name.replace('\n',' ')}</div>
+
+    <div class="info-invest-tag" style="background:#444">网络效应资产</div>
+
+    <div class="info-section">
+
+      <div class="info-section-title">铁路的网络效应</div>
+
+      <div class="info-stats">
+
+        <div class="info-stat"><div class="info-stat-val">¥25</div><div class="info-stat-label">持有1条</div></div>
+
+        <div class="info-stat"><div class="info-stat-val">¥50</div><div class="info-stat-label">持有2条</div></div>
+
+        <div class="info-stat"><div class="info-stat-val">¥100</div><div class="info-stat-label">持有3条</div></div>
+
+        <div class="info-stat"><div class="info-stat-val">¥200</div><div class="info-stat-label">持有全部</div></div>
+
+      </div>
+
+    </div>
+
+    <div class="info-section">
+
+      <div class="info-section-title">投资对应：网络效应护城河</div>
+
+      <p>每多持有一条铁路，收益不是线性增长而是指数跳跃。这正是微信、淘宝等平台经济的核心逻辑——用的人越多，每个用户带来的价值越高，竞争对手越难撼动。</p>
+
+    </div>
+
+    <div class="info-section">
+
+      <div class="info-section-title">高效规模护城河</div>
+
+      <p>棋盘只有4条铁路，市场天然决定只有一个赢家。对应现实：城市地铁、高铁网络、基础设施——自然垄断使竞争无从开始。</p>
+
+    </div>
+
+  `;
+
+}
+
+
+
+function showUtilityInfo(data) {
+
+  document.querySelectorAll('.cell').forEach(c => c.classList.remove('active'));
+
+  event.currentTarget.classList.add('active');
+
+  document.getElementById('info-default').style.display = 'none';
+
+  const c = document.getElementById('info-content');
+
+  c.style.display = 'block';
+
+  c.innerHTML = `
+
+    <div class="info-zone-bar" style="background:#1a6b4a"></div>
+
+    <div class="info-name">${data.icon} ${data.name.replace('\n',' ')}</div>
+
+    <div class="info-invest-tag" style="background:#1a6b4a">垄断型公用事业</div>
+
+    <div class="info-section">
+
+      <div class="info-section-title">公用事业的护城河</div>
+
+      <p>持有1个：骰子点数×4；持有2个：点数×10。垄断溢价在这里体现得淋漓尽致。</p>
+
+      <p>对应现实：A股公用事业板块（水电、燃气、高速公路）——它们的护城河不是靠竞争赢来的，是靠"市场只够一家"天然形成的。</p>
+
+    </div>
+
+    <div class="info-section">
+
+      <div class="info-section-title">投资特点</div>
+
+      <p>收益稳定、波动极小、现金流充沛、分红稳定。适合追求稳健现金流而非资本增值的投资者。</p>
+
+    </div>
+
+  `;
+
+}
+
+
+
+function showSpecialInfo(type) {
+
+  document.querySelectorAll('.cell').forEach(c => c.classList.remove('active'));
+
+  event.currentTarget.classList.add('active');
+
+  document.getElementById('info-default').style.display = 'none';
+
+  const c = document.getElementById('info-content');
+
+  c.style.display = 'block';
+
+  const info = {
+
+    chance: { color:'#e8a020', icon:'🃏', title:'机会卡', body:'<p>棋盘上的<strong>黑天鹅事件</strong>——翻开之前永远不知道是什么。可能是意外收入，可能是突然交税，可能是直接进监狱。</p><p>塔勒布定义：极度罕见、冲击力极强、事后显得理所当然。</p><p>对应投资：非典、金融危机、新冠疫情。护城河资产在黑天鹅后恢复最快。<strong>机会储备就是为了黑天鹅来临时能出手。</strong></p>' },
+
+    chest:  { color:'#27ae60', icon:'📦', title:'命运卡', body:'<p>棋盘上的<strong>系统性事件</strong>——全体玩家同时受影响。"房屋大维修：每栋¥40，每家酒店¥115"——持有资产越多，受冲击越大。</p><p>对应投资：央行调息、全球通胀、系统性政策调整。<strong>这是流动性压力测试——现金不足的玩家在这里最容易破产。</strong></p>' },
+
+    tax:    { color:'#c0392b', icon:'💸', title:'税务格', body:'<p>对应投资中的<strong>各类成本</strong>：管理费、交易税、印花税、资产增值税。</p><p>看起来很小的费率差异，在复利作用下20年后可以造成30%+的资产差距。<strong>费率是可见的确定性损耗，必须纳入投资计算。</strong></p><p>这就是为什么指数基金（0.1%管理费）长期优于主动基金（1.5%管理费）。</p>' },
+
+  };
+
+  const i = info[type];
+
+  c.innerHTML = `
+
+    <div class="info-zone-bar" style="background:${i.color}"></div>
+
+    <div class="info-name">${i.icon} ${i.title}</div>
+
+    <div class="info-section"><div class="info-section-title">投资对应</div>${i.body}</div>
+
+  `;
+
+}
+
+
+
+function showCornerInfo(id) {
+
+  document.querySelectorAll('.cell').forEach(c => c.classList.remove('active'));
+
+  event.currentTarget.classList.add('active');
+
+  document.getElementById('info-default').style.display = 'none';
+
+  const c = document.getElementById('info-content');
+
+  c.style.display = 'block';
+
+  const info = {
+
+    go:   { color:'#27ae60', icon:'🟢', title:'起点 GO', body:'<p>每经过起点收¥200——这是棋盘上最重要的机制，没有之一。不管这一圈过得多惨，只要还活着，绕完一圈就有收入。</p><p><strong>投资对应：你的每月定投300元。</strong>这是你的"经过起点时刻"——永不停止的现金流输入，才是整个体系的生命线。</p><p>富达基金研究：收益最好的账户是那些"忘记了有这个账户"的人——他们什么都没做，但他们的定投从未停止过。</p>' },
+
+    jail: { color:'#5c3d2e', icon:'🏛️', title:'监狱·参观', body:'<p>监狱格有两种状态：参观（路过，不受影响）与被关押（停留，无法行动）。</p><p>游戏中后期，<strong>被关押反而是一种保护</strong>——外面全是对手的酒店，在监狱里你安全，还能观察局势。</p><p><strong>投资对应：战略性持有现金，等待最佳时机。</strong>巴菲特2005—2007年"坐在现金上"被嘲笑，2008年崩盘后他的等待变成了职业生涯最大的财富积累。</p>' },
+
+    fp:   { color:'#888', icon:'🅿️', title:'免费停车', body:'<p>纯粹的休息格——什么都不发生，安全地停在这里。</p><p><strong>投资对应：现金仓位。</strong>不是所有时候都需要行动。持有现金本身就是一种持仓，它让你在需要时能够行动——这种能力有时候比任何资产都值钱。</p>' },
+
+    gtj:  { color:'#c0392b', icon:'👮', title:'直接进监狱', body:'<p>最戏剧性的一张命运卡——翻到它，立刻停止行动，直接进监狱。</p><p><strong>投资对应：流动性危机的触发点。</strong>LTCM用25倍杠杆，在1998年俄罗斯危机中触发了死亡螺旋：亏损→追保证金→被迫卖出→更多亏损。四个月亏损46亿美元。</p><p>护盾：三桶水体系让你永远有足够的现金缓冲，不会被任何"直接进监狱"的命运卡逼到破产边缘。</p>' },
+
+  };
+
+  const i = info[id] || info.go;
+
+  c.innerHTML = `
+
+    <div class="info-zone-bar" style="background:${i.color}"></div>
+
+    <div class="info-name">${i.icon} ${i.title}</div>
+
+    <div class="info-section"><div class="info-section-title">投资对应</div>${i.body}</div>
+
+  `;
+
+}
+
+
+
+/* =====================================================================
+
+   LESSON PANEL
+
+   ===================================================================== */
+
+
+
+let currentLesson = 0;
+
+
+
+function renderLessons() {
+
+  const tabs = document.getElementById('lesson-tabs');
+
+  LESSONS.forEach((l, i) => {
+
+    const t = document.createElement('div');
+
+    t.className = 'ltab' + (i === 0 ? ' active' : '');
+
+    t.textContent = l.tab;
+
+    t.onclick = () => switchLesson(i);
+
+    tabs.appendChild(t);
+
+  });
+
+  showLesson(0);
+
+}
+
+
+
+function switchLesson(i) {
+
+  currentLesson = i;
+
+  document.querySelectorAll('.ltab').forEach((t, idx) => {
+
+    t.classList.toggle('active', idx === i);
+
+  });
+
+  showLesson(i);
+
+  document.getElementById('lesson-panel').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+
+}
+
+
+
+function showLesson(i) {
+
+  document.getElementById('lesson-content').innerHTML = LESSONS[i].content;
+
+}
+
+
+
+/* =====================================================================
+
+   MODAL
+
+   ===================================================================== */
+
+
+
+const MODAL_CONTENT = {
+
+  rules: {
+
+    title: '📜 棋盘标准规则',
+
+    body: `
+
+      <h3>本课程使用的标准大富翁棋盘</h3>
+
+      <p>棋盘共40格，11×11网格，四个角落各占一格，每边9格普通方块。</p>
+
+      <h3>八大色区（28块地产）</h3>
+
+      <p><strong>紫色区</strong>（2块）地中海大道、波罗的海大道。¥60起，酒店租金最低，但位于起点附近，流量极高。</p>
+
+      <p><strong>浅蓝区</strong>（3块）东方大道、佛蒙特大道、康涅狄格大道。¥100—120，棋盘第一边。</p>
+
+      <p><strong>粉红区</strong>（3块）圣查理广场、各州大道、弗吉尼亚大道。¥140—160，第二边。</p>
+
+      <p><strong>橙色区⭐</strong>（3块）圣詹姆斯广场、田纳西大道、纽约大道。¥180—200，<strong>统计被踩概率最高</strong>——监狱出口附近，出狱玩家高频落点。</p>
+
+      <p><strong>红色区</strong>（3块）肯塔基大道、印第安纳大道、伊利诺伊大道。¥220—240，第三边。</p>
+
+      <p><strong>黄色区</strong>（3块）大西洋大道、文特诺大道、马文花园。¥260—280，紧邻机会卡。</p>
+
+      <p><strong>绿色区</strong>（3块）太平洋大道、北卡罗来纳大道、宾夕法尼亚大道。¥300—320，第四边高价区。</p>
+
+      <p><strong>深蓝区👑</strong>（2块）公园广场¥350、宝威大道¥400，最稀缺，酒店租金最高¥2000。</p>
+
+      <h3>特殊格子</h3>
+
+      <p><strong>铁路（4条）</strong>各¥200。持有1/2/3/4条分别收¥25/50/100/200。网络效应的完美体现。</p>
+
+      <p><strong>公用事业（2个）</strong>各¥150。持有1个：骰子点数×4；持有2个：骰子点数×10。</p>
+
+      <p><strong>机会卡/命运卡</strong>各16张，对应黑天鹅事件。</p>
+
+      <p><strong>四角格</strong>起点（过境收¥200）、监狱、免费停车、直接进监狱。</p>
+
+    `
+
+  },
+
+  map: {
+
+    title: '🌲 森林生态投资地图',
+
+    body: `
+
+      <h3>六层森林结构</h3>
+
+      <p>在这门课之前，我们先绘制了一张<strong>森林生态价值投资地图</strong>，从地下到顶部分为六层：</p>
+
+      <h3>1. 森林的土壤</h3>
+
+      <p>法治、信用、<strong>信义义务（Fiduciary Duty）</strong>——"受人之托，代人理财"的根本约束。自我的"三把火"：知识、能力、价值观。</p>
+
+      <h3>2. 森林的气候</h3>
+
+      <p><strong>市场先生（Mr. Market）</strong>——情绪极不稳定的合伙人。他时而报高价（贪婪），时而报低价（恐惧）。你要利用他的情绪，而不是被其驱动。<em>"在别人恐惧时贪婪，在别人贪婪时恐惧。"</em></p>
+
+      <h3>3. 森林的物种</h3>
+
+      <p>货币基金（草坪）→ 债券基金（灌木）→ 股票基金（大树）→ 指数基金（森林自然生长）</p>
+
+      <h3>4. 生长法则</h3>
+
+      <p><strong>内在价值</strong>：未来所有现金流折现之和。<strong>安全边际</strong>：以远低于价值的价格买入。<strong>第一性原理</strong>：追问生意本质、人的格局、环境变化。</p>
+
+      <h3>5. 护林路径</h3>
+
+      <p>每月300元定投 + 复利效应 + 战胜追涨杀跌 + 智能定投（均线以下多投）。</p>
+
+      <h3>6. 森林的边界</h3>
+
+      <p><strong>守住能力圈</strong>：只投资你真正看得懂的。<strong>长期主义</strong>：流水不争先，争的是滔滔不绝。最终目标：<strong>心灵的宁静</strong>。</p>
+
+      <blockquote>"时间的玫瑰，静静绽放。"</blockquote>
+
+    `
+
+  }
+
+};
+
+
+
+function openModal(key) {
+
+  const m = MODAL_CONTENT[key];
+
+  document.getElementById('modal-title').textContent = m.title;
+
+  document.getElementById('modal-body').innerHTML = m.body;
+
+  document.getElementById('modal-overlay').classList.add('open');
+
+}
+
+
+
+function showZoneModal(zoneKey) {
+
+  const z = ZONES[zoneKey];
+
+  document.getElementById('modal-title').textContent = `${z.emoji} ${z.name} · ${z.invest}`;
+
+  document.getElementById('modal-body').innerHTML = `
+
+    <div style="height:6px;background:${z.color};border-radius:3px;margin-bottom:1rem"></div>
+
+    <h3>投资定位</h3>
+
+    <p>${z.desc}</p>
+
+    <h3>关键数据</h3>
+
+    <p><strong>参考年化收益率：</strong>${z.ret}<br>
+
+    <strong>风险等级：</strong>${z.risk}<br>
+
+    <strong>护城河类型：</strong>${z.moat.join('、')}</p>
+
+    <h3>三桶水对应</h3>
+
+    ${zoneKey === 'purple' ? '<p>这是<strong>第一桶水（应急储备）</strong>的理想工具——流动性第一，收益其次，随时可取。</p>' :
+
+      zoneKey === 'ltblue' || zoneKey === 'pink' ? '<p>适合<strong>中期目标资金</strong>（三年留学准备金等）——收益高于货币基金，波动可控，不需要随时动用。</p>' :
+
+      zoneKey === 'orange' ? '<p>这是<strong>第三桶水（增值资产）</strong>的核心工具——指数基金定投，每月300元，持续20年，不问涨跌。</p>' :
+
+      '<p>这类资产属于<strong>第三桶水（增值资产）</strong>的进阶配置，需要更高的认知门槛和更长的持有周期。</p>'}
+
+    <h3>对应课程</h3>
+
+    <p>详见 → <strong>第${z.lesson}课：${LESSONS[z.lesson-1].title}</strong></p>
+
+  `;
+
+  document.getElementById('modal-overlay').classList.add('open');
+
+}
+
+
+
+function closeModal() {
+
+  document.getElementById('modal-overlay').classList.remove('open');
+
+}
+
+function closeModalOutside(e) {
+
+  if (e.target === document.getElementById('modal-overlay')) closeModal();
+
+}
+
+
+
+/* =====================================================================
+
+   SCENARIO GAME
+
+   ===================================================================== */
+
+
+
+let scenarioIndex = 0;
+
+let score = 0;
+
+let answered = false;
+
+
+
+function setMode(mode) {
+
+  document.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('active'));
+
+  event.currentTarget.classList.add('active');
+
+
+
+  const sp = document.getElementById('scenario-panel');
+
+  if (mode === 'scenario') {
+
+    sp.classList.add('show');
+
+    loadScenario(0);
+
+  } else {
+
+    sp.classList.remove('show');
+
+  }
+
+}
+
+
+
+function loadScenario(i) {
+
+  scenarioIndex = i;
+
+  answered = false;
+
+  const s = SCENARIOS[i];
+
+  document.getElementById('scenario-question').textContent = s.q;
+
+  const opts = document.getElementById('scenario-options');
+
+  opts.innerHTML = '';
+
+  s.opts.forEach((o, idx) => {
+
+    const btn = document.createElement('button');
+
+    btn.className = 'scenario-opt';
+
+    btn.textContent = o.text;
+
+    btn.onclick = () => answerScenario(idx);
+
+    opts.appendChild(btn);
+
+  });
+
+  document.getElementById('scenario-feedback').className = 'scenario-feedback';
+
+  document.getElementById('scenario-feedback').style.display = 'none';
+
+  document.getElementById('scn-next').disabled = true;
+
+  document.getElementById('scenario-progress').textContent = `第 ${i+1} / ${SCENARIOS.length} 题`;
+
+  updateScore();
+
+}
+
+
+
+function answerScenario(idx) {
+
+  if (answered) return;
+
+  answered = true;
+
+  const s = SCENARIOS[scenarioIndex];
+
+  const o = s.opts[idx];
+
+  const opts = document.getElementById('scenario-options').children;
+
+
+
+  // Highlight all correct/wrong
+
+  s.opts.forEach((opt, i) => {
+
+    if (opt.correct) opts[i].classList.add('correct');
+
+    else if (i === idx && !opt.correct) opts[i].classList.add('wrong');
+
+  });
+
+
+
+  if (o.correct) score++;
+
+  updateScore();
+
+
+
+  const fb = document.getElementById('scenario-feedback');
+
+  fb.textContent = o.fb;
+
+  fb.className = 'scenario-feedback show ' + (o.correct ? 'correct-fb' : 'wrong-fb');
+
+  fb.style.display = 'block';
+
+  document.getElementById('scn-next').disabled = (scenarioIndex >= SCENARIOS.length - 1);
+
+}
+
+
+
+function nextScenario() {
+
+  if (scenarioIndex < SCENARIOS.length - 1) {
+
+    loadScenario(scenarioIndex + 1);
+
+  }
+
+}
+
+
+
+function updateScore() {
+
+  document.getElementById('score-display').textContent = `得分：${score} / ${SCENARIOS.length}`;
+
+}
+
+
+
+/* =====================================================================
+
+   INIT
+
+   ===================================================================== */
+
+
+
+renderBoard();
+
+renderLessons();
+
+</script>
+
+</body>
+
+</html>
