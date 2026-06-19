@@ -154,6 +154,8 @@ prog(18);
 const MAX_SRC=8;
 const gSrcArr=Array.from({length:MAX_SRC},()=>new THREE.Vector3(0,-100,0));
 const gRadArr=new Array(MAX_SRC).fill(0);
+// globalGrowth: 0→1, drives the entire bark to alive state at once
+let globalGrowth=0;
 
 const barkVS=`
 varying vec3 vWP;varying vec3 vN;varying vec3 vVP;varying vec2 vUV;
@@ -167,6 +169,7 @@ void main(){
 const barkFS=`
 uniform vec3 uGS[8];uniform float uGR[8];
 uniform vec3 uTP;uniform float uTS;
+uniform float uGlobalGrowth;
 varying vec3 vWP;varying vec3 vN;varying vec3 vVP;varying vec2 vUV;
 float hash(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}
 float hash21(vec2 p){return fract(sin(dot(p,vec2(269.5,183.3)))*43758.5453);}
@@ -185,7 +188,7 @@ float voronoi(vec2 p){
 }
 
 float getGrowth(){
-  float m=0.0;
+  float m=uGlobalGrowth;
   for(int i=0;i<8;i++){
     float d=distance(vWP,uGS[i]);
     m=max(m,smoothstep(uGR[i],max(0.0,uGR[i]-1.2),d));
@@ -274,7 +277,7 @@ void main(){
 }`;
 const barkMat=new THREE.ShaderMaterial({
   vertexShader:barkVS,fragmentShader:barkFS,
-  uniforms:{uGS:{value:gSrcArr},uGR:{value:gRadArr},uTP:{value:new THREE.Vector3(0,-100,0)},uTS:{value:0}}
+  uniforms:{uGS:{value:gSrcArr},uGR:{value:gRadArr},uTP:{value:new THREE.Vector3(0,-100,0)},uTS:{value:0},uGlobalGrowth:{value:0}}
 });
 prog(24);
 
@@ -378,7 +381,7 @@ const brG=[];const leafD=[];const flowerD=[];const fruitD=[];
 
 // Trunk — gently curved, slight lean
 const trunk=[V3(0,0,0),V3(0.12,0.55,0.08),V3(-0.06,1.2,0.14),V3(0.14,1.9,-0.04),V3(0.02,2.55,0.08)];
-brG.push(taperedTube(trunk,0.30,0.16,16,16));
+brG.push(taperedTube(trunk,0.30,0.16,20,20));
 
 // Main branches — asymmetric S-curves, Chinese aesthetic
 const a0=trunk[4];
@@ -428,20 +431,20 @@ function subBranch(start,dir,len,rad,depth,maxD){
     d.y+=(Math.random()-0.35)*0.18;d.normalize();
     pts.push(pts[i-1].clone().add(d.clone().multiplyScalar(len/n)));
   }
-  brG.push(taperedTube(pts,rad,rad*0.45,Math.max(4,8-depth),Math.max(6,12-depth*2)));
+  brG.push(taperedTube(pts,rad,rad*0.45,Math.max(6,10-depth),Math.max(8,14-depth*2)));
   const end=pts[pts.length-1];
 
   // Place leaves at branch tips and along branches
   if(depth>=1){
-    const lc=depth>=2?16+Math.floor(Math.random()*12):8+Math.floor(Math.random()*6);
+    const lc=depth>=2?20+Math.floor(Math.random()*16):10+Math.floor(Math.random()*8);
     const sp=0.12+depth*0.06;
     for(let i=0;i<lc;i++){
       const off=V3((Math.random()-0.5)*sp*2,(Math.random()-0.5)*sp*1.5,(Math.random()-0.5)*sp*2);
       leafD.push({p:end.clone().add(off),n:off.clone().normalize().add(V3(0,0.3,0)).normalize()});
     }
     for(let j=1;j<pts.length-1;j++){
-      if(Math.random()>0.5)continue;
-      for(let k=0;k<3+Math.floor(Math.random()*3);k++){
+      if(Math.random()>0.65)continue;
+      for(let k=0;k<4+Math.floor(Math.random()*4);k++){
         const o2=V3((Math.random()-0.5)*sp,(Math.random()-0.5)*sp*0.5,(Math.random()-0.5)*sp);
         leafD.push({p:pts[j].clone().add(o2),n:o2.clone().normalize().add(V3(0,0.3,0)).normalize()});
       }
@@ -469,7 +472,7 @@ function subBranch(start,dir,len,rad,depth,maxD){
     }
   }
 }
-mainTips.forEach(t=>subBranch(t.pos,t.dir,0.8+Math.random()*0.6,t.r,0,3));
+mainTips.forEach(t=>subBranch(t.pos,t.dir,0.8+Math.random()*0.6,t.r,0,4));
 prog(50);
 
 /* ==================== ROOTS ==================== */
@@ -699,11 +702,12 @@ for(let i=0;i<10;i++){
 prog(90);
 
 /* ==================== GROWTH STATE ==================== */
-// Growth propagates radially from each touch point at GSPEED units/second.
-// getAge(pos, time) returns how "old" a point is — negative means not yet reached.
-const GSPEED=0.6;
+// Growth propagates radially from touch points. On first touch, growth seeds
+// are planted along the entire trunk so the whole tree greens up together.
+const GSPEED=1.8;
 const growthSources=[];
 let touchPt=V3(0,-100,0),touchStr=0;
+let firstTouchDone=false;
 
 const touchLight=new THREE.PointLight(0xd4a050,0,4);scene.add(touchLight);
 const touchGlow=new THREE.Mesh(
@@ -721,24 +725,49 @@ function getAge(pos,time){
   }
   return m;
 }
+// firstTouchTime tracks when the tree was first touched, for global growth ramp
+let firstTouchTime=-1;
 
 /* ==================== NAMED GROWTH FUNCTIONS ==================== */
-// initiateGrowth: called on touch — registers a new growth source
+// initiateGrowth: on first touch, seeds growth along the entire trunk and
+// all major branch bases so the whole tree greens up simultaneously.
+// Subsequent touches add extra growth sources for local bursts.
 function initiateGrowth(touchPoint){
-  if(growthSources.length>=MAX_SRC) growthSources.shift();
-  growthSources.push({p:touchPoint.clone(),t:clock.getElapsedTime()});
+  const now=clock.getElapsedTime();
+  if(!firstTouchDone){
+    firstTouchDone=true;
+    firstTouchTime=now;
+    // seed along trunk
+    for(const pt of trunk) growthSources.push({p:pt.clone(),t:now});
+    // seed at all major branch tips and junctions
+    const seedPts=[a0,b0,d0,e0,brA[2],brA[4],brB[2],brB[4],brC[2],brC[3],brD[2],brD[4],brE[2],brE[3]];
+    for(const pt of seedPts) growthSources.push({p:pt.clone(),t:now});
+    // seed at all sub-branch tip positions
+    for(const tip of mainTips) growthSources.push({p:tip.pos.clone(),t:now});
+  } else {
+    if(growthSources.length>=128) growthSources.splice(0,16);
+    growthSources.push({p:touchPoint.clone(),t:now});
+  }
   burst(touchPoint);
 }
 
-// growShoots: updates bark shader growth uniforms (visual greening of bark)
+// growShoots: updates bark shader growth uniforms and global growth ramp
 function growShoots(t){
+  // pick the 8 most impactful sources for shader (largest radius)
+  const sorted=[...growthSources].map((s,i)=>({i,r:(t-s.t)*GSPEED})).sort((a,b)=>b.r-a.r);
   for(let i=0;i<MAX_SRC;i++){
-    if(i<growthSources.length){
-      gSrcArr[i].copy(growthSources[i].p);
-      gRadArr[i]=(t-growthSources[i].t)*GSPEED;
+    if(i<sorted.length){
+      const src=growthSources[sorted[i].i];
+      gSrcArr[i].copy(src.p);
+      gRadArr[i]=sorted[i].r;
     } else {
       gSrcArr[i].set(0,-100,0);gRadArr[i]=0;
     }
+  }
+  // global growth: ramp entire bark to alive over 4 seconds after first touch
+  if(firstTouchTime>0){
+    globalGrowth=Math.min(1,Math.max(0,(t-firstTouchTime)/4.0));
+    barkMat.uniforms.uGlobalGrowth.value=globalGrowth;
   }
 }
 
