@@ -7,9 +7,10 @@
 <style>
 *,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
 html,body{width:100%;height:100%;overflow:hidden;background:#000;font-family:"楷体","KaiTi","STKaiti","SimSun",serif}
-canvas{display:block;width:100%;height:100%}
+canvas{display:block;width:100%;height:100%;cursor:grab}
+canvas:active{cursor:grabbing}
 
-#loading{position:fixed;inset:0;background:#000;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:1000;transition:opacity 2s ease,visibility 2s ease}
+#loading{position:fixed;inset:0;background:#000;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:1000;transition:opacity 2.5s ease,visibility 2.5s ease}
 #loading.fade-out{opacity:0;visibility:hidden;pointer-events:none}
 .loading-title{font-size:clamp(2rem,6vw,4rem);color:#c9a96e;letter-spacing:0.6em;margin-bottom:1.5rem;text-shadow:0 0 40px rgba(201,169,110,0.3);animation:breathe 3s ease-in-out infinite}
 .loading-quote{font-size:clamp(0.9rem,2.5vw,1.4rem);color:#7a6650;letter-spacing:0.25em;line-height:2.2;text-align:center;max-width:600px;padding:0 2rem}
@@ -26,7 +27,7 @@ canvas{display:block;width:100%;height:100%}
 .bottom-quote{position:absolute;bottom:3rem;right:3rem;text-align:right;max-width:400px}
 .bottom-quote p{font-size:clamp(0.8rem,1.8vw,1.1rem);color:#8a7a60;letter-spacing:0.15em;line-height:2;text-shadow:0 0 20px rgba(0,0,0,0.8)}
 .bottom-quote .source{font-size:clamp(0.6rem,1.2vw,0.75rem);color:#5a4a3a;margin-top:0.8rem;letter-spacing:0.3em}
-.hint{position:absolute;bottom:2rem;left:3rem;font-size:0.7rem;color:#3a3a3a;letter-spacing:0.15em;transition:opacity 3s ease 4s}
+.hint{position:absolute;bottom:2rem;left:3rem;font-size:0.7rem;color:#3a3a3a;letter-spacing:0.15em}
 
 #vignette{position:fixed;inset:0;pointer-events:none;z-index:5;background:radial-gradient(ellipse at center,transparent 40%,rgba(0,0,0,0.6) 100%)}
 </style>
@@ -49,7 +50,7 @@ canvas{display:block;width:100%;height:100%}
     <p>庭有枇杷树，<br>吾妻死之年所手植也，<br>今已亭亭如盖矣。</p>
     <div class="source">— 项脊轩志</div>
   </div>
-  <div class="hint">拖动旋转 · 滚轮缩放</div>
+  <div class="hint">拖动旋转 · 滚轮缩放 · 触碰枇杷树</div>
 </div>
 
 <div id="vignette"></div>
@@ -72,347 +73,402 @@ import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js'
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 
 const loadingFill = document.getElementById('loading-fill');
-function setProgress(p) { loadingFill.style.width = p + '%'; }
+function setProgress(p) { loadingFill.style.width = Math.min(p, 100) + '%'; }
 
 /* ============================================================
-   SCENE SETUP
+   SCENE
    ============================================================ */
 const scene = new THREE.Scene();
-scene.fog = new THREE.FogExp2(0x000000, 0.015);
+scene.fog = new THREE.FogExp2(0x000000, 0.012);
 
-const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 500);
-camera.position.set(6, 4, 8);
-camera.lookAt(0, 3, 0);
+const camera = new THREE.PerspectiveCamera(42, innerWidth / innerHeight, 0.1, 600);
+camera.position.set(7, 3.5, 7);
 
-const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
-renderer.setSize(window.innerWidth, window.innerHeight);
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setSize(innerWidth, innerHeight);
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 1.1;
+renderer.toneMappingExposure = 1.15;
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 document.body.prepend(renderer.domElement);
 
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true;
-controls.dampingFactor = 0.04;
+controls.dampingFactor = 0.05;
 controls.autoRotate = true;
-controls.autoRotateSpeed = 0.3;
-controls.minDistance = 3;
-controls.maxDistance = 25;
-controls.target.set(0, 3, 0);
-controls.maxPolarAngle = Math.PI * 0.85;
+controls.autoRotateSpeed = 0.25;
+controls.minDistance = 2.5;
+controls.maxDistance = 22;
+controls.target.set(0, 2.8, 0);
+controls.maxPolarAngle = Math.PI * 0.88;
 controls.update();
 
 const composer = new EffectComposer(renderer);
 composer.addPass(new RenderPass(scene, camera));
-const bloomPass = new UnrealBloomPass(
-  new THREE.Vector2(window.innerWidth, window.innerHeight), 0.6, 0.8, 0.35
-);
-composer.addPass(bloomPass);
+const bloom = new UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight), 0.55, 0.7, 0.3);
+composer.addPass(bloom);
 
-setProgress(10);
+setProgress(8);
 
 /* ============================================================
    LIGHTING
    ============================================================ */
-const ambientLight = new THREE.AmbientLight(0x1a1a2e, 0.6);
-scene.add(ambientLight);
+scene.add(new THREE.AmbientLight(0x1a1a2e, 0.5));
 
-const moonLight = new THREE.DirectionalLight(0xc9b896, 1.2);
-moonLight.position.set(-5, 12, 8);
-moonLight.castShadow = false;
-scene.add(moonLight);
+const moon = new THREE.DirectionalLight(0xd0c8a0, 1.0);
+moon.position.set(-6, 14, 8);
+scene.add(moon);
 
-const fillLight = new THREE.DirectionalLight(0x4a6080, 0.3);
-fillLight.position.set(5, 2, -5);
-scene.add(fillLight);
+const fill = new THREE.DirectionalLight(0x4a6080, 0.25);
+fill.position.set(5, 2, -6);
+scene.add(fill);
 
-const rimLight = new THREE.DirectionalLight(0x8090a0, 0.4);
-rimLight.position.set(0, 5, -10);
-scene.add(rimLight);
+const rim = new THREE.DirectionalLight(0x6878a0, 0.35);
+rim.position.set(0, 4, -10);
+scene.add(rim);
 
-const warmSpot = new THREE.PointLight(0xc9a060, 0.8, 15);
-warmSpot.position.set(1, 1, 2);
+const warmSpot = new THREE.PointLight(0xc9a060, 0.7, 14);
+warmSpot.position.set(1, 0.5, 2);
 scene.add(warmSpot);
 
-const canopyGlow = new THREE.PointLight(0x6a8a5a, 0.5, 10);
-canopyGlow.position.set(0, 5, 0);
+const canopyGlow = new THREE.PointLight(0x5a7a4a, 0.45, 10);
+canopyGlow.position.set(-0.5, 5, 0);
 scene.add(canopyGlow);
 
-setProgress(15);
+setProgress(12);
 
 /* ============================================================
-   WORMHOLE BACKGROUND
+   SKY SHADER — realistic starfield with subtle nebula
    ============================================================ */
-const wormholeVert = `
-varying vec3 vWorldPos;
+const skyVS = `
+varying vec3 vDir;
 void main(){
-  vWorldPos = (modelMatrix * vec4(position,1.0)).xyz;
+  vDir = (modelMatrix * vec4(position,1.0)).xyz;
   gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0);
 }`;
-
-const wormholeFrag = `
+const skyFS = `
 uniform float uTime;
-varying vec3 vWorldPos;
-
-float hash(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453123);}
+varying vec3 vDir;
+float hash(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}
+float hash3(vec3 p){return fract(sin(dot(p,vec3(127.1,311.7,74.7)))*43758.5453);}
 float noise(vec2 p){
-  vec2 i=floor(p),f=fract(p);
-  f=f*f*(3.0-2.0*f);
-  return mix(mix(hash(i),hash(i+vec2(1,0)),f.x),
-             mix(hash(i+vec2(0,1)),hash(i+vec2(1,1)),f.x),f.y);
+  vec2 i=floor(p),f=fract(p);f=f*f*(3.0-2.0*f);
+  return mix(mix(hash(i),hash(i+vec2(1,0)),f.x),mix(hash(i+vec2(0,1)),hash(i+vec2(1,1)),f.x),f.y);
 }
 float fbm(vec2 p){
-  float v=0.0,a=0.5;
-  mat2 rot=mat2(0.8,0.6,-0.6,0.8);
-  for(int i=0;i<6;i++){v+=a*noise(p);p=rot*p*2.0;a*=0.5;}
+  float v=0.0,a=0.5;mat2 r=mat2(0.8,0.6,-0.6,0.8);
+  for(int i=0;i<6;i++){v+=a*noise(p);p=r*p*2.0;a*=0.5;}
   return v;
 }
-
 void main(){
-  vec3 dir=normalize(vWorldPos);
-  float phi=atan(dir.z,dir.x);
-  float theta=acos(clamp(dir.y,-1.0,1.0));
+  vec3 d=normalize(vDir);
+  float phi=atan(d.z,d.x);
+  float theta=acos(clamp(d.y,-1.0,1.0));
   float r=theta/3.14159;
 
-  float spiral=phi+r*6.0+sin(r*8.0+uTime*0.08)*0.8+uTime*0.03;
-  vec2 p=vec2(cos(spiral)*r,sin(spiral)*r);
+  // subtle swirl
+  float swirl=phi + r*3.0 + sin(r*6.0+uTime*0.04)*0.5 + uTime*0.012;
+  vec2 sp=vec2(cos(swirl)*r, sin(swirl)*r);
 
-  float n1=fbm(p*4.0+uTime*0.015);
-  float n2=fbm(p*6.0-uTime*0.02+3.0);
-  float n3=fbm(p*8.0+vec2(uTime*0.01,0.0));
+  float n1=fbm(sp*3.5 + uTime*0.008);
+  float n2=fbm(sp*5.0 - uTime*0.012 + 5.0);
 
   vec3 col=vec3(0.0);
-  float core=smoothstep(0.5,0.0,r);
-  col+=vec3(0.06,0.0,0.14)*n1*core*1.5;
-  col+=vec3(0.0,0.04,0.12)*n2*(1.0-r*0.6)*0.8;
-  col+=vec3(0.08,0.02,0.06)*n3*smoothstep(0.7,0.3,r)*0.6;
-  col+=vec3(0.03,0.0,0.08)*smoothstep(0.2,0.0,abs(r-0.35))*sin(spiral*3.0+uTime*0.1)*0.5;
+  float core=smoothstep(0.55,0.0,r);
+  col += vec3(0.04,0.0,0.10)*n1*core;
+  col += vec3(0.0,0.025,0.08)*n2*(1.0-r*0.5)*0.6;
+  col += vec3(0.05,0.01,0.04)*smoothstep(0.6,0.2,r)*n1*0.4;
 
-  float sf=hash(floor(vec2(phi*80.0,theta*80.0)));
-  if(sf>0.993){
-    float bright=pow(hash(floor(vec2(phi*80.0+7.0,theta*80.0+13.0))),4.0);
-    float twinkle=0.7+0.3*sin(uTime*2.0+sf*100.0);
-    col+=vec3(0.7,0.75,1.0)*bright*twinkle*1.5;
-  }
-  float sf2=hash(floor(vec2(phi*40.0+3.0,theta*40.0+5.0)));
-  if(sf2>0.99){
-    float bright=pow(hash(floor(vec2(phi*40.0+17.0,theta*40.0+23.0))),3.0);
-    col+=vec3(1.0,0.9,0.7)*bright*0.8;
+  // multi-layer stars
+  for(float scale=60.0; scale<=200.0; scale+=35.0){
+    vec2 cell=floor(vec2(phi,theta)*scale);
+    float sv=hash(cell+scale);
+    if(sv>0.985){
+      vec2 cellCenter=(cell+0.5)/scale;
+      vec2 uv=vec2(phi,theta);
+      float dist=length((uv-cellCenter)*vec2(scale,scale*0.8));
+      float bright=pow(sv,20.0)*smoothstep(0.6,0.0,dist);
+      float twinkle=0.7+0.3*sin(uTime*(1.0+sv*3.0)+sv*100.0);
+      float temp=hash(cell+100.0);
+      vec3 starCol=temp>0.6?vec3(0.8,0.85,1.0):temp>0.3?vec3(1.0,0.95,0.85):vec3(1.0,0.92,0.8);
+      col+=starCol*bright*twinkle*1.8;
+    }
   }
 
-  col+=vec3(0.12,0.04,0.18)*smoothstep(0.15,0.0,r)*0.5;
+  // central depth glow
+  col+=vec3(0.08,0.03,0.12)*smoothstep(0.12,0.0,r)*0.4;
   gl_FragColor=vec4(col,1.0);
 }`;
-
-const wormholeMat = new THREE.ShaderMaterial({
-  vertexShader: wormholeVert,
-  fragmentShader: wormholeFrag,
-  uniforms: { uTime: { value: 0 } },
-  side: THREE.BackSide
+const skyMat = new THREE.ShaderMaterial({
+  vertexShader: skyVS, fragmentShader: skyFS,
+  uniforms:{ uTime:{value:0} }, side: THREE.BackSide
 });
-
-const skySphere = new THREE.Mesh(new THREE.IcosahedronGeometry(200, 5), wormholeMat);
-scene.add(skySphere);
-
-setProgress(20);
+scene.add(new THREE.Mesh(new THREE.IcosahedronGeometry(250,6), skyMat));
+setProgress(18);
 
 /* ============================================================
-   STAR PARTICLES
+   EXTRA STAR PARTICLES for depth
    ============================================================ */
-function createStarField() {
-  const count = 3000;
-  const positions = new Float32Array(count * 3);
-  const sizes = new Float32Array(count);
-  const colors = new Float32Array(count * 3);
-  for (let i = 0; i < count; i++) {
-    const r = 50 + Math.random() * 100;
-    const theta = Math.random() * Math.PI * 2;
-    const phi = Math.acos(2 * Math.random() - 1);
-    positions[i*3]   = r * Math.sin(phi) * Math.cos(theta);
-    positions[i*3+1] = r * Math.sin(phi) * Math.sin(theta);
-    positions[i*3+2] = r * Math.cos(phi);
-    sizes[i] = 0.5 + Math.random() * 2.0;
-    const temp = Math.random();
-    if (temp > 0.7) { colors[i*3]=0.8; colors[i*3+1]=0.85; colors[i*3+2]=1.0; }
-    else if (temp > 0.4) { colors[i*3]=1.0; colors[i*3+1]=0.95; colors[i*3+2]=0.8; }
-    else { colors[i*3]=1.0; colors[i*3+1]=1.0; colors[i*3+2]=1.0; }
+(function(){
+  const N=4000, pos=new Float32Array(N*3), col=new Float32Array(N*3), sz=new Float32Array(N);
+  for(let i=0;i<N;i++){
+    const R=40+Math.random()*150, th=Math.random()*Math.PI*2, ph=Math.acos(2*Math.random()-1);
+    pos[i*3]=R*Math.sin(ph)*Math.cos(th);pos[i*3+1]=R*Math.sin(ph)*Math.sin(th);pos[i*3+2]=R*Math.cos(ph);
+    sz[i]=0.3+Math.random()*1.5;
+    const t=Math.random();
+    col[i*3]=t>0.5?0.85:1; col[i*3+1]=t>0.5?0.9:0.95; col[i*3+2]=t>0.5?1:0.85;
   }
-  const geom = new THREE.BufferGeometry();
-  geom.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-  geom.setAttribute('size', new THREE.BufferAttribute(sizes, 1));
-  geom.setAttribute('color', new THREE.BufferAttribute(colors, 3));
-  const mat = new THREE.PointsMaterial({ size: 0.3, vertexColors: true, transparent: true, opacity: 0.8, sizeAttenuation: true });
-  return new THREE.Points(geom, mat);
-}
-scene.add(createStarField());
-setProgress(25);
+  const g=new THREE.BufferGeometry();
+  g.setAttribute('position',new THREE.BufferAttribute(pos,3));
+  g.setAttribute('color',new THREE.BufferAttribute(col,3));
+  g.setAttribute('size',new THREE.BufferAttribute(sz,1));
+  scene.add(new THREE.Points(g,new THREE.PointsMaterial({size:0.25,vertexColors:true,transparent:true,opacity:0.75,sizeAttenuation:true})));
+})();
+setProgress(22);
 
 /* ============================================================
-   FIREFLY PARTICLES
+   FIREFLIES
    ============================================================ */
-const fireflyCount = 150;
-const fireflyPositions = new Float32Array(fireflyCount * 3);
-const fireflySpeeds = [];
-for (let i = 0; i < fireflyCount; i++) {
-  fireflyPositions[i*3]   = (Math.random() - 0.5) * 12;
-  fireflyPositions[i*3+1] = Math.random() * 8 + 0.5;
-  fireflyPositions[i*3+2] = (Math.random() - 0.5) * 12;
-  fireflySpeeds.push({
-    x: (Math.random() - 0.5) * 0.005,
-    y: (Math.random() - 0.5) * 0.003,
-    z: (Math.random() - 0.5) * 0.005,
-    phase: Math.random() * Math.PI * 2
-  });
+const ffCount=120, ffPos=new Float32Array(ffCount*3), ffSpeeds=[];
+for(let i=0;i<ffCount;i++){
+  ffPos[i*3]=(Math.random()-0.5)*10; ffPos[i*3+1]=Math.random()*7+0.5; ffPos[i*3+2]=(Math.random()-0.5)*10;
+  ffSpeeds.push({x:(Math.random()-0.5)*0.004,y:(Math.random()-0.5)*0.002,z:(Math.random()-0.5)*0.004,ph:Math.random()*6.28});
 }
-const fireflyGeom = new THREE.BufferGeometry();
-fireflyGeom.setAttribute('position', new THREE.BufferAttribute(fireflyPositions, 3));
-const fireflyMat = new THREE.PointsMaterial({
-  color: 0xc9a060, size: 0.08, transparent: true, opacity: 0.6,
-  blending: THREE.AdditiveBlending, sizeAttenuation: true
+const ffGeom=new THREE.BufferGeometry();
+ffGeom.setAttribute('position',new THREE.BufferAttribute(ffPos,3));
+const ffMat=new THREE.PointsMaterial({color:0xc9a060,size:0.07,transparent:true,opacity:0.5,blending:THREE.AdditiveBlending,sizeAttenuation:true});
+scene.add(new THREE.Points(ffGeom,ffMat));
+
+/* ============================================================
+   BARK SHADER — procedural realistic bark with touch glow
+   ============================================================ */
+const barkVS = `
+varying vec3 vWorldPos;
+varying vec3 vNormal;
+varying vec3 vViewPos;
+void main(){
+  vec4 wp=modelMatrix*vec4(position,1.0);
+  vWorldPos=wp.xyz;
+  vNormal=normalize((modelMatrix*vec4(normal,0.0)).xyz);
+  vViewPos=(viewMatrix*wp).xyz;
+  gl_Position=projectionMatrix*viewMatrix*wp;
+}`;
+const barkFS = `
+uniform vec3 uTouchPt;
+uniform float uTouchStr;
+varying vec3 vWorldPos;
+varying vec3 vNormal;
+varying vec3 vViewPos;
+
+float hash(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}
+float noise(vec2 p){
+  vec2 i=floor(p),f=fract(p);f=f*f*(3.0-2.0*f);
+  return mix(mix(hash(i),hash(i+vec2(1,0)),f.x),mix(hash(i+vec2(0,1)),hash(i+vec2(1,1)),f.x),f.y);
+}
+float fbm(vec2 p){
+  float v=0.0,a=0.5;mat2 r=mat2(0.8,0.6,-0.6,0.8);
+  for(int i=0;i<5;i++){v+=a*noise(p);p=r*p*2.0;a*=0.5;}
+  return v;
+}
+void main(){
+  vec2 bk=vec2(atan(vWorldPos.x,vWorldPos.z)*1.5, vWorldPos.y*2.5);
+  float bark=fbm(bk*5.0);
+  float groove=smoothstep(0.32,0.55,bark);
+  float fine=noise(bk*30.0)*0.12;
+
+  vec3 base=vec3(0.34,0.24,0.15);
+  vec3 dark=vec3(0.16,0.10,0.06);
+  vec3 light=vec3(0.48,0.35,0.22);
+  vec3 col=mix(base,dark,groove*0.6);
+  col=mix(col,light,(1.0-groove)*0.15+fine);
+
+  vec3 ld=normalize(vec3(-0.5,1.0,0.8));
+  float diff=max(dot(vNormal,ld),0.0);
+  float ao=0.7+0.3*(1.0-groove);
+  col*=(0.3+diff*0.7)*ao;
+
+  vec3 vd=normalize(-vViewPos);
+  float rimV=1.0-max(dot(vNormal,vd),0.0);
+  col+=vec3(0.12,0.10,0.06)*pow(rimV,3.0)*0.25;
+
+  // touch glow
+  float td=distance(vWorldPos,uTouchPt);
+  float tg=exp(-td*2.5)*uTouchStr;
+  col+=vec3(0.85,0.6,0.3)*tg*0.6;
+
+  gl_FragColor=vec4(col,1.0);
+}`;
+const barkMat = new THREE.ShaderMaterial({
+  vertexShader:barkVS, fragmentShader:barkFS,
+  uniforms:{uTouchPt:{value:new THREE.Vector3(0,-100,0)},uTouchStr:{value:0}}
 });
-const fireflyMesh = new THREE.Points(fireflyGeom, fireflyMat);
-scene.add(fireflyMesh);
+setProgress(28);
 
 /* ============================================================
-   TREE GENERATION
+   HELPER — smooth tapered tube along curve
    ============================================================ */
-const branchGeometries = [];
-const leafData = [];
-const fruitData = [];
-const barkColor = new THREE.Color(0x5C4033);
-
-function generateBranch(start, dir, length, radius, depth, maxDepth) {
-  if (depth > maxDepth || radius < 0.004) return;
-
-  const numSegments = depth < 2 ? 5 : 3;
-  const points = [start.clone()];
-  const currentDir = dir.clone().normalize();
-
-  for (let i = 0; i < numSegments; i++) {
-    const wobble = depth < 1 ? 0.03 : 0.06 + depth * 0.02;
-    currentDir.x += (Math.random() - 0.5) * wobble;
-    currentDir.z += (Math.random() - 0.5) * wobble;
-    currentDir.y += (Math.random() - 0.3) * wobble * 0.5;
-    currentDir.normalize();
-    const segLen = length / numSegments;
-    const prev = points[points.length - 1];
-    points.push(prev.clone().add(currentDir.clone().multiplyScalar(segLen)));
-  }
-
-  for (let i = 0; i < points.length - 1; i++) {
-    const t0 = i / (points.length - 1);
-    const t1 = (i + 1) / (points.length - 1);
-    const r0 = radius * (1 - t0 * 0.4);
-    const r1 = radius * (1 - t1 * 0.4);
-    const segDir = new THREE.Vector3().subVectors(points[i + 1], points[i]);
-    const segLen = segDir.length();
-    if (segLen < 0.001) continue;
-    segDir.normalize();
-
-    const radialSegs = depth < 3 ? 8 : 6;
-    const geom = new THREE.CylinderGeometry(r1, r0, segLen, radialSegs, 1);
-
-    const quat = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), segDir);
-    const pos = points[i].clone().lerp(points[i + 1], 0.5);
-    const mat4 = new THREE.Matrix4().compose(pos, quat, new THREE.Vector3(1, 1, 1));
-    geom.applyMatrix4(mat4);
-
-    const posAttr = geom.attributes.position;
-    const colorAttr = new Float32Array(posAttr.count * 3);
-    for (let v = 0; v < posAttr.count; v++) {
-      const noiseVal = 0.85 + Math.random() * 0.3;
-      colorAttr[v * 3]     = barkColor.r * noiseVal;
-      colorAttr[v * 3 + 1] = barkColor.g * noiseVal;
-      colorAttr[v * 3 + 2] = barkColor.b * noiseVal;
-    }
-    geom.setAttribute('color', new THREE.BufferAttribute(colorAttr, 3));
-    branchGeometries.push(geom);
-  }
-
-  const end = points[points.length - 1];
-  const endDir = currentDir.clone();
-
-  if (depth >= 3) {
-    const leafCount = depth >= 5 ? 18 + Math.floor(Math.random() * 14) : 8 + Math.floor(Math.random() * 8);
-    for (let i = 0; i < leafCount; i++) {
-      const spread = 0.15 + depth * 0.05;
-      const offset = new THREE.Vector3(
-        (Math.random() - 0.5) * spread * 2,
-        (Math.random() - 0.5) * spread * 1.5,
-        (Math.random() - 0.5) * spread * 2
-      );
-      leafData.push({
-        position: end.clone().add(offset),
-        normal: offset.clone().normalize().add(new THREE.Vector3(0, 0.3, 0)).normalize()
-      });
+function taperedTube(pts, rStart, rEnd, segs, radial){
+  const curve=new THREE.CatmullRomCurve3(pts);
+  const g=new THREE.TubeGeometry(curve, segs, 1.0, radial, false);
+  const pos=g.attributes.position;
+  const ringSize=radial+1;
+  for(let ring=0;ring<=segs;ring++){
+    const t=ring/segs;
+    const rad=rStart+(rEnd-rStart)*t;
+    const c=curve.getPointAt(Math.min(t,1));
+    for(let j=0;j<=radial;j++){
+      const idx=ring*ringSize+j;
+      if(idx>=pos.count) continue;
+      const dx=pos.getX(idx)-c.x, dy=pos.getY(idx)-c.y, dz=pos.getZ(idx)-c.z;
+      const d=Math.sqrt(dx*dx+dy*dy+dz*dz);
+      if(d>0.0001){
+        const s=rad/d;
+        pos.setXYZ(idx, c.x+dx*s, c.y+dy*s, c.z+dz*s);
+      }
     }
   }
-
-  if (depth >= 2 && depth <= 5 && Math.random() > 0.55) {
-    const clusterSize = 2 + Math.floor(Math.random() * 6);
-    for (let i = 0; i < clusterSize; i++) {
-      fruitData.push(end.clone().add(new THREE.Vector3(
-        (Math.random() - 0.5) * 0.2,
-        -Math.random() * 0.2 - 0.03,
-        (Math.random() - 0.5) * 0.2
-      )));
-    }
-  }
-
-  if (depth < maxDepth) {
-    const baseChildren = depth < 1 ? 5 : depth < 2 ? 4 : depth < 4 ? 3 : 2;
-    const numChildren = baseChildren + (Math.random() > 0.5 ? 1 : 0);
-
-    for (let i = 0; i < numChildren; i++) {
-      const up = endDir.clone();
-      let perp = new THREE.Vector3(1, 0, 0);
-      if (Math.abs(up.dot(perp)) > 0.9) perp.set(0, 0, 1);
-      const right = new THREE.Vector3().crossVectors(up, perp).normalize();
-      const forward = new THREE.Vector3().crossVectors(right, up).normalize();
-
-      const spreadBase = depth < 1 ? 0.5 : depth < 3 ? 0.4 : 0.35;
-      const spreadAngle = spreadBase + Math.random() * 0.35;
-      const azimuth = (i / numChildren) * Math.PI * 2 + (Math.random() - 0.5) * 1.2;
-
-      const sinS = Math.sin(spreadAngle);
-      const cosS = Math.cos(spreadAngle);
-      const childDir = new THREE.Vector3()
-        .addScaledVector(up, cosS)
-        .addScaledVector(right, sinS * Math.cos(azimuth))
-        .addScaledVector(forward, sinS * Math.sin(azimuth));
-
-      childDir.y += 0.12 * Math.max(0, 1 - depth * 0.18);
-      childDir.normalize();
-
-      const childLength = length * (0.55 + Math.random() * 0.2);
-      const childRadius = radius * (0.5 + Math.random() * 0.18);
-      generateBranch(end, childDir, childLength, childRadius, depth + 1, maxDepth);
-    }
-  }
+  pos.needsUpdate=true;
+  g.computeVertexNormals();
+  return g;
 }
 
-setProgress(30);
-
-generateBranch(
-  new THREE.Vector3(0, 0, 0),
-  new THREE.Vector3(0.02, 1, 0.01),
-  2.8, 0.28, 0, 6
-);
-
-setProgress(50);
+const V3=(x,y,z)=>new THREE.Vector3(x,y,z);
 
 /* ============================================================
-   MERGE BRANCHES
+   TREE — Chinese aesthetic curved structure
    ============================================================ */
-const barkMaterial = new THREE.MeshStandardMaterial({
-  vertexColors: true, roughness: 0.92, metalness: 0.03
+const branchGeoms=[];
+const leafData=[];
+const fruitData=[];
+
+// Trunk — gentle S-curve, leaning with character
+const trunk=[V3(0,0,0),V3(0.12,0.55,0.08),V3(-0.06,1.2,0.14),V3(0.14,1.9,-0.04),V3(0.02,2.55,0.08)];
+branchGeoms.push(taperedTube(trunk,0.3,0.16,16,16));
+
+// Main branches — each with distinct personality
+// Branch A: dominant, reaches up-right with graceful curve
+const a0=trunk[4];
+const brA=[a0,V3(a0.x+0.35,a0.y+0.55,a0.z+0.12),V3(a0.x+0.7,a0.y+1.3,a0.z-0.1),V3(a0.x+0.45,a0.y+2.1,a0.z+0.25),V3(a0.x+0.15,a0.y+2.8,a0.z+0.05)];
+branchGeoms.push(taperedTube(brA,0.13,0.035,14,14));
+
+// Branch B: sweeps left, drops then rises — dramatic Chinese painting style
+const b0=trunk[3];
+const brB=[b0,V3(b0.x-0.4,b0.y+0.3,b0.z+0.35),V3(b0.x-1.1,b0.y+0.15,b0.z+0.55),V3(b0.x-1.6,b0.y+0.7,b0.z+0.3),V3(b0.x-1.3,b0.y+1.4,b0.z+0.0)];
+branchGeoms.push(taperedTube(brB,0.11,0.03,14,14));
+
+// Branch C: forward, creates depth
+const brC=[a0,V3(a0.x+0.1,a0.y+0.4,a0.z+0.5),V3(a0.x-0.15,a0.y+0.9,a0.z+1.1),V3(a0.x-0.3,a0.y+1.5,a0.z+1.3)];
+branchGeoms.push(taperedTube(brC,0.09,0.025,12,12));
+
+// Branch D: backward-right, dramatic S-curve
+const d0=trunk[2];
+const brD=[d0,V3(d0.x+0.5,d0.y+0.05,d0.z-0.35),V3(d0.x+1.1,d0.y-0.15,d0.z-0.6),V3(d0.x+1.5,d0.y+0.25,d0.z-0.9),V3(d0.x+1.7,d0.y+0.9,d0.z-0.65)];
+branchGeoms.push(taperedTube(brD,0.10,0.028,14,14));
+
+// Branch E: short lower branch, creates weight
+const e0=trunk[1];
+const brE=[e0,V3(e0.x+0.4,e0.y+0.1,e0.z+0.2),V3(e0.x+0.7,e0.y-0.05,e0.z+0.35),V3(e0.x+0.9,e0.y+0.2,e0.z+0.25)];
+branchGeoms.push(taperedTube(brE,0.07,0.02,10,10));
+
+setProgress(38);
+
+// Main branch tips for sub-branching
+const mainTips=[
+  {pos:brA[brA.length-1], dir:V3(-0.2,0.6,0.1).normalize(), r:0.035},
+  {pos:brA[3], dir:V3(0.5,0.4,-0.2).normalize(), r:0.04},
+  {pos:brB[brB.length-1], dir:V3(-0.3,0.5,-0.2).normalize(), r:0.03},
+  {pos:brB[3], dir:V3(-0.5,0.3,0.4).normalize(), r:0.035},
+  {pos:brC[brC.length-1], dir:V3(-0.2,0.5,0.4).normalize(), r:0.025},
+  {pos:brC[2], dir:V3(0.4,0.3,0.5).normalize(), r:0.03},
+  {pos:brD[brD.length-1], dir:V3(0.2,0.5,-0.3).normalize(), r:0.028},
+  {pos:brD[3], dir:V3(0.6,0.2,-0.4).normalize(), r:0.03},
+  {pos:brE[brE.length-1], dir:V3(0.3,0.4,0.1).normalize(), r:0.02},
+  {pos:a0, dir:V3(-0.1,0.7,-0.3).normalize(), r:0.06},
+  {pos:trunk[3], dir:V3(0.3,0.5,0.4).normalize(), r:0.05},
+];
+
+/* ============================================================
+   SUB-BRANCH recursive generation
+   ============================================================ */
+function subBranch(start, dir, len, rad, depth, maxD){
+  if(depth>maxD||rad<0.004) return;
+  const n=3+Math.floor(Math.random()*2);
+  const pts=[start.clone()];
+  const d=dir.clone();
+  for(let i=1;i<=n;i++){
+    d.x+=(Math.random()-0.5)*0.25;
+    d.z+=(Math.random()-0.5)*0.25;
+    d.y+=(Math.random()-0.35)*0.18;
+    d.normalize();
+    pts.push(pts[i-1].clone().add(d.clone().multiplyScalar(len/n)));
+  }
+  const rEnd=rad*0.45;
+  const rSegs=Math.max(6,12-depth*2);
+  branchGeoms.push(taperedTube(pts,rad,rEnd,Math.max(4,8-depth),rSegs));
+
+  const end=pts[pts.length-1];
+
+  // leaves at depth >= 1
+  if(depth>=1){
+    const lc=depth>=2?16+Math.floor(Math.random()*12):8+Math.floor(Math.random()*6);
+    const spread=0.12+depth*0.06;
+    for(let i=0;i<lc;i++){
+      const off=V3((Math.random()-0.5)*spread*2,(Math.random()-0.5)*spread*1.5,(Math.random()-0.5)*spread*2);
+      leafData.push({p:end.clone().add(off),n:off.clone().normalize().add(V3(0,0.3,0)).normalize()});
+    }
+  }
+  // also scatter leaves along the branch
+  if(depth>=1){
+    for(let i=1;i<pts.length-1;i++){
+      if(Math.random()>0.5) continue;
+      const sp=0.08+depth*0.04;
+      for(let j=0;j<3+Math.floor(Math.random()*4);j++){
+        const off=V3((Math.random()-0.5)*sp*2,(Math.random()-0.5)*sp,(Math.random()-0.5)*sp*2);
+        leafData.push({p:pts[i].clone().add(off),n:off.clone().normalize().add(V3(0,0.3,0)).normalize()});
+      }
+    }
+  }
+
+  // fruits
+  if(depth>=1&&depth<=3&&Math.random()>0.5){
+    const fc=2+Math.floor(Math.random()*5);
+    for(let i=0;i<fc;i++){
+      fruitData.push(end.clone().add(V3((Math.random()-0.5)*0.18,-Math.random()*0.18-0.02,(Math.random()-0.5)*0.18)));
+    }
+  }
+
+  // children
+  if(depth<maxD){
+    const nc=depth<1?3:2+Math.floor(Math.random()*2);
+    for(let i=0;i<nc;i++){
+      const endDir=d.clone();
+      let perp=V3(1,0,0); if(Math.abs(endDir.dot(perp))>0.9) perp=V3(0,0,1);
+      const right=V3().crossVectors(endDir,perp).normalize();
+      const fwd=V3().crossVectors(right,endDir).normalize();
+      const sa=0.35+Math.random()*0.4;
+      const az=(i/nc)*Math.PI*2+(Math.random()-0.5)*1.0;
+      const cd=V3().addScaledVector(endDir,Math.cos(sa)).addScaledVector(right,Math.sin(sa)*Math.cos(az)).addScaledVector(fwd,Math.sin(sa)*Math.sin(az));
+      cd.y+=0.08*Math.max(0,1-depth*0.2);
+      cd.normalize();
+      subBranch(end,cd,len*(0.5+Math.random()*0.22),rad*(0.48+Math.random()*0.18),depth+1,maxD);
+    }
+  }
+}
+
+mainTips.forEach(t=>{
+  subBranch(t.pos,t.dir,0.8+Math.random()*0.6,t.r,0,3);
 });
 
-if (branchGeometries.length > 0) {
-  const mergedBranches = mergeGeometries(branchGeometries, false);
-  if (mergedBranches) {
-    const branchMesh = new THREE.Mesh(mergedBranches, barkMaterial);
+setProgress(55);
+
+/* ============================================================
+   MERGE ALL BRANCHES
+   ============================================================ */
+let branchMesh;
+if(branchGeoms.length){
+  const merged=mergeGeometries(branchGeoms,false);
+  if(merged){
+    branchMesh=new THREE.Mesh(merged,barkMat);
     scene.add(branchMesh);
   }
 }
@@ -420,349 +476,337 @@ if (branchGeometries.length > 0) {
 setProgress(60);
 
 /* ============================================================
-   LEAF GEOMETRY & INSTANCING
+   LEAF GEOMETRY — curved, natural shape
    ============================================================ */
-function createLeafGeometry() {
-  const shape = new THREE.Shape();
-  const w = 0.045, l = 0.13;
-  shape.moveTo(0, -l);
-  shape.bezierCurveTo(w * 0.4, -l * 0.65, w * 1.1, -l * 0.2, w, 0.02);
-  shape.bezierCurveTo(w * 0.9, l * 0.35, w * 0.5, l * 0.75, 0, l);
-  shape.bezierCurveTo(-w * 0.5, l * 0.75, -w * 0.9, l * 0.35, -w, 0.02);
-  shape.bezierCurveTo(-w * 1.1, -l * 0.2, -w * 0.4, -l * 0.65, 0, -l);
-  const geom = new THREE.ShapeGeometry(shape, 6);
-  const positions = geom.attributes.position;
-  for (let i = 0; i < positions.count; i++) {
-    const x = positions.getX(i);
-    const y = positions.getY(i);
-    const bend = Math.abs(x) * 2.0;
-    positions.setZ(i, -bend * 0.15 + Math.sin(y * 8) * 0.005);
+function mkLeafGeom(){
+  const sh=new THREE.Shape();
+  const w=0.05,l=0.14;
+  sh.moveTo(0,-l);
+  sh.bezierCurveTo(w*0.35,-l*0.6, w*1.05,-l*0.15, w,0.02);
+  sh.bezierCurveTo(w*0.85,l*0.4, w*0.45,l*0.78, 0,l);
+  sh.bezierCurveTo(-w*0.45,l*0.78, -w*0.85,l*0.4, -w,0.02);
+  sh.bezierCurveTo(-w*1.05,-l*0.15, -w*0.35,-l*0.6, 0,-l);
+  const g=new THREE.ShapeGeometry(sh,8);
+  const p=g.attributes.position;
+  for(let i=0;i<p.count;i++){
+    const x=p.getX(i),y=p.getY(i);
+    p.setZ(i, -Math.abs(x)*3.0*0.12 + Math.sin(y*10)*0.004 + Math.sin(x*15)*0.003);
   }
-  positions.needsUpdate = true;
-  geom.computeVertexNormals();
-  return geom;
+  p.needsUpdate=true;
+  g.computeVertexNormals();
+  return g;
 }
 
-const leafGeom = createLeafGeometry();
-const leafMaterial = new THREE.MeshPhysicalMaterial({
-  color: 0x2d5a1e, roughness: 0.55, metalness: 0.02,
-  transmission: 0.08, thickness: 0.5, side: THREE.DoubleSide,
-  transparent: true, opacity: 0.92
+const leafGeom=mkLeafGeom();
+const leafMat=new THREE.MeshPhysicalMaterial({
+  color:0x2a5a1c, roughness:0.5, metalness:0.02,
+  transmission:0.1, thickness:0.4, side:THREE.DoubleSide,
+  transparent:true, opacity:0.93
 });
 
-const leafCount = leafData.length;
-const leafMesh = new THREE.InstancedMesh(leafGeom, leafMaterial, leafCount);
-const dummy = new THREE.Object3D();
+const leafCount=leafData.length;
+const leafInst=new THREE.InstancedMesh(leafGeom,leafMat,leafCount);
+const dum=new THREE.Object3D();
 
-for (let i = 0; i < leafCount; i++) {
-  const ld = leafData[i];
-  dummy.position.copy(ld.position);
-  dummy.lookAt(ld.position.clone().add(ld.normal));
-  dummy.rotateZ(Math.random() * Math.PI * 2);
-  dummy.rotateX((Math.random() - 0.5) * 0.6);
-  const s = 0.7 + Math.random() * 0.6;
-  dummy.scale.set(s, s, s);
-  dummy.updateMatrix();
-  leafMesh.setMatrixAt(i, dummy.matrix);
-
-  const c = new THREE.Color();
-  const hue = 0.25 + (Math.random() - 0.5) * 0.08;
-  const sat = 0.45 + Math.random() * 0.35;
-  const lig = 0.12 + Math.random() * 0.16;
-  c.setHSL(hue, sat, lig);
-  leafMesh.setColorAt(i, c);
+for(let i=0;i<leafCount;i++){
+  const ld=leafData[i];
+  dum.position.copy(ld.p);
+  dum.lookAt(ld.p.clone().add(ld.n));
+  dum.rotateZ(Math.random()*Math.PI*2);
+  dum.rotateX((Math.random()-0.5)*0.7);
+  const s=0.6+Math.random()*0.6;
+  dum.scale.set(s,s,s);
+  dum.updateMatrix();
+  leafInst.setMatrixAt(i,dum.matrix);
+  const c=new THREE.Color().setHSL(0.25+(Math.random()-0.5)*0.09,0.4+Math.random()*0.38,0.11+Math.random()*0.17);
+  leafInst.setColorAt(i,c);
 }
-leafMesh.instanceMatrix.needsUpdate = true;
-if (leafMesh.instanceColor) leafMesh.instanceColor.needsUpdate = true;
-scene.add(leafMesh);
+leafInst.instanceMatrix.needsUpdate=true;
+if(leafInst.instanceColor) leafInst.instanceColor.needsUpdate=true;
+scene.add(leafInst);
 
-setProgress(75);
+setProgress(72);
 
 /* ============================================================
-   LOQUAT FRUIT GEOMETRY & INSTANCING
+   LOQUAT FRUITS — smooth pear-shaped with fuzz
    ============================================================ */
-function createFruitGeometry() {
-  const geom = new THREE.SphereGeometry(0.028, 14, 14);
-  const pos = geom.attributes.position;
-  for (let i = 0; i < pos.count; i++) {
-    let x = pos.getX(i), y = pos.getY(i), z = pos.getZ(i);
-    y *= 1.25;
-    if (y > 0) {
-      const squeeze = 1 - y * 3.5;
-      x *= Math.max(0.6, squeeze);
-      z *= Math.max(0.6, squeeze);
-    }
-    if (y < -0.01) {
-      const bulge = 1 + Math.sin((-y / 0.035) * Math.PI * 0.5) * 0.12;
-      x *= bulge;
-      z *= bulge;
-    }
-    const noiseAmt = 0.0008;
-    x += (Math.random() - 0.5) * noiseAmt;
-    y += (Math.random() - 0.5) * noiseAmt;
-    z += (Math.random() - 0.5) * noiseAmt;
-    pos.setXYZ(i, x, y, z);
+function mkFruitGeom(){
+  const g=new THREE.SphereGeometry(0.03,20,20);
+  const p=g.attributes.position;
+  for(let i=0;i<p.count;i++){
+    let x=p.getX(i),y=p.getY(i),z=p.getZ(i);
+    y*=1.3;
+    if(y>0){const sq=1-y*3.2; x*=Math.max(0.55,sq); z*=Math.max(0.55,sq);}
+    if(y<-0.005){const bl=1+Math.sin((-y/0.04)*Math.PI*0.5)*0.14; x*=bl; z*=bl;}
+    p.setXYZ(i,x,y,z);
   }
-  pos.needsUpdate = true;
-  geom.computeVertexNormals();
-  return geom;
+  p.needsUpdate=true;
+  g.computeVertexNormals();
+  return g;
 }
 
-const fruitFuzzVert = `
-varying vec3 vNormal;
-varying vec3 vViewDir;
-varying vec2 vUv;
-varying float vFuzz;
-void main(){
-  vUv = uv;
-  vNormal = normalize(normalMatrix * normal);
-  vec4 mvPos = modelViewMatrix * vec4(position, 1.0);
-  vViewDir = normalize(-mvPos.xyz);
-  vFuzz = 0.5 + 0.5 * sin(position.x * 200.0 + position.y * 150.0 + position.z * 180.0);
-  gl_Position = projectionMatrix * mvPos;
-}`;
-
-const fruitFuzzFrag = `
-uniform vec3 uBaseColor;
-uniform vec3 uFuzzColor;
-varying vec3 vNormal;
-varying vec3 vViewDir;
-varying vec2 vUv;
-varying float vFuzz;
-void main(){
-  float facing = dot(vNormal, vViewDir);
-  float rim = 1.0 - max(0.0, facing);
-  rim = pow(rim, 1.5);
-
-  vec3 color = mix(uBaseColor, uFuzzColor, rim * 0.7 + vFuzz * 0.15);
-
-  float diffuse = max(0.0, dot(vNormal, normalize(vec3(-0.5, 1.0, 0.8))));
-  color *= 0.35 + diffuse * 0.65;
-  color += vec3(1.0, 0.95, 0.8) * pow(max(0.0, dot(reflect(-normalize(vec3(-0.5,1.0,0.8)), vNormal), vViewDir)), 20.0) * 0.15;
-  color += uFuzzColor * rim * 0.4;
-
-  gl_FragColor = vec4(color, 1.0);
-}`;
-
-const fruitGeom = createFruitGeometry();
-const fruitShaderMat = new THREE.ShaderMaterial({
-  vertexShader: fruitFuzzVert,
-  fragmentShader: fruitFuzzFrag,
-  uniforms: {
-    uBaseColor: { value: new THREE.Color(0xD4941A) },
-    uFuzzColor: { value: new THREE.Color(0xF5DEB3) }
-  }
+const fruitGeom=mkFruitGeom();
+const fruitMat=new THREE.MeshPhysicalMaterial({
+  color:0xD4941A, roughness:0.78, metalness:0,
+  clearcoat:0.04, clearcoatRoughness:0.9,
+  sheen:1.0, sheenRoughness:0.75, sheenColor:new THREE.Color(0xF5DEB3)
 });
 
-const fruitMeshMat = new THREE.MeshPhysicalMaterial({
-  color: 0xD4941A, roughness: 0.78, metalness: 0.0,
-  clearcoat: 0.05, clearcoatRoughness: 0.9, sheen: 1.0,
-  sheenRoughness: 0.8, sheenColor: new THREE.Color(0xF5DEB3)
-});
+const fruitCount=fruitData.length;
+const fruitInst=new THREE.InstancedMesh(fruitGeom,fruitMat,fruitCount);
 
-const fruitCount = fruitData.length;
-const fruitInstanceMesh = new THREE.InstancedMesh(fruitGeom, fruitMeshMat, fruitCount);
-
-for (let i = 0; i < fruitCount; i++) {
-  dummy.position.copy(fruitData[i]);
-  dummy.rotation.set(Math.random() * 0.5, Math.random() * Math.PI * 2, Math.random() * 0.5);
-  const s = 0.7 + Math.random() * 0.5;
-  dummy.scale.set(s, s * (0.9 + Math.random() * 0.2), s);
-  dummy.updateMatrix();
-  fruitInstanceMesh.setMatrixAt(i, dummy.matrix);
-
-  const c = new THREE.Color();
-  c.setHSL(0.1 + Math.random() * 0.06, 0.65 + Math.random() * 0.3, 0.38 + Math.random() * 0.18);
-  fruitInstanceMesh.setColorAt(i, c);
+for(let i=0;i<fruitCount;i++){
+  dum.position.copy(fruitData[i]);
+  dum.rotation.set(Math.random()*0.5,Math.random()*6.28,Math.random()*0.5);
+  const s=0.65+Math.random()*0.5;
+  dum.scale.set(s,s*(0.9+Math.random()*0.2),s);
+  dum.updateMatrix();
+  fruitInst.setMatrixAt(i,dum.matrix);
+  fruitInst.setColorAt(i,new THREE.Color().setHSL(0.1+Math.random()*0.06,0.6+Math.random()*0.35,0.35+Math.random()*0.2));
 }
-fruitInstanceMesh.instanceMatrix.needsUpdate = true;
-if (fruitInstanceMesh.instanceColor) fruitInstanceMesh.instanceColor.needsUpdate = true;
-scene.add(fruitInstanceMesh);
+fruitInst.instanceMatrix.needsUpdate=true;
+if(fruitInst.instanceColor) fruitInst.instanceColor.needsUpdate=true;
+scene.add(fruitInst);
 
-/* fruit stems */
-const stemGeom = new THREE.CylinderGeometry(0.002, 0.003, 0.06, 4, 1);
-const stemMat = new THREE.MeshStandardMaterial({ color: 0x4a3520, roughness: 0.9 });
-for (let i = 0; i < fruitCount; i++) {
-  const stem = new THREE.Mesh(stemGeom, stemMat);
-  stem.position.copy(fruitData[i]).add(new THREE.Vector3(0, 0.04, 0));
-  stem.rotation.z = (Math.random() - 0.5) * 0.3;
-  scene.add(stem);
+// fruit stems
+const stemG=new THREE.CylinderGeometry(0.002,0.003,0.055,6,1);
+const stemM=new THREE.MeshStandardMaterial({color:0x4a3520,roughness:0.9});
+for(let i=0;i<fruitCount;i++){
+  const s=new THREE.Mesh(stemG,stemM);
+  s.position.copy(fruitData[i]).add(V3(0,0.038,0));
+  s.rotation.z=(Math.random()-0.5)*0.25;
+  scene.add(s);
+}
+
+setProgress(80);
+
+/* ============================================================
+   GROUND + ROOTS
+   ============================================================ */
+const gndG=new THREE.CircleGeometry(7,64);
+const gndM=new THREE.MeshStandardMaterial({color:0x1a1008,roughness:1,transparent:true,opacity:0.35});
+const gnd=new THREE.Mesh(gndG,gndM); gnd.rotation.x=-Math.PI/2; gnd.position.y=-0.06;
+scene.add(gnd);
+
+for(let i=0;i<7;i++){
+  const ang=(i/7)*Math.PI*2+Math.random()*0.5;
+  const rLen=0.7+Math.random()*1.3, rRad=0.025+Math.random()*0.04;
+  const pts=[V3(Math.cos(ang)*0.22,0.04,Math.sin(ang)*0.22)];
+  const rd=V3(Math.cos(ang),-0.12,Math.sin(ang)).normalize();
+  for(let s=0;s<5;s++){
+    rd.y-=0.02; rd.x+=(Math.random()-0.5)*0.1; rd.z+=(Math.random()-0.5)*0.1; rd.normalize();
+    pts.push(pts[pts.length-1].clone().add(rd.clone().multiplyScalar(rLen/5)));
+  }
+  branchGeoms.push(taperedTube(pts,rRad,rRad*0.3,8,8));
+}
+// re-merge with roots
+if(branchGeoms.length && branchMesh){
+  const rootGeoms=branchGeoms.slice(-7);
+  const rMerged=mergeGeometries(rootGeoms,false);
+  if(rMerged) scene.add(new THREE.Mesh(rMerged,barkMat));
 }
 
 setProgress(85);
 
 /* ============================================================
-   GROUND ROOTS
-   ============================================================ */
-const groundGeom = new THREE.CircleGeometry(6, 64);
-const groundMat = new THREE.MeshStandardMaterial({
-  color: 0x1a1008, roughness: 1, metalness: 0, transparent: true, opacity: 0.4
-});
-const ground = new THREE.Mesh(groundGeom, groundMat);
-ground.rotation.x = -Math.PI / 2;
-ground.position.y = -0.05;
-scene.add(ground);
-
-for (let i = 0; i < 8; i++) {
-  const angle = (i / 8) * Math.PI * 2 + Math.random() * 0.4;
-  const rootLength = 0.8 + Math.random() * 1.2;
-  const rootRadius = 0.03 + Math.random() * 0.04;
-  const rootDir = new THREE.Vector3(Math.cos(angle), -0.15, Math.sin(angle)).normalize();
-  const rootGeoms = [];
-  let pos = new THREE.Vector3(
-    Math.cos(angle) * 0.2,
-    0.05,
-    Math.sin(angle) * 0.2
-  );
-  const segs = 4;
-  const rDir = rootDir.clone();
-  for (let s = 0; s < segs; s++) {
-    const t = s / segs;
-    const r0 = rootRadius * (1 - t * 0.6);
-    const r1 = rootRadius * (1 - (t + 1 / segs) * 0.6);
-    const segLen = rootLength / segs;
-    rDir.y -= 0.03;
-    rDir.normalize();
-    const nextPos = pos.clone().add(rDir.clone().multiplyScalar(segLen));
-    const d = new THREE.Vector3().subVectors(nextPos, pos);
-    const l = d.length();
-    d.normalize();
-    const g = new THREE.CylinderGeometry(r1, r0, l, 6, 1);
-    const q = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), d);
-    const m = new THREE.Matrix4().compose(pos.clone().lerp(nextPos, 0.5), q, new THREE.Vector3(1, 1, 1));
-    g.applyMatrix4(m);
-    const ca = new Float32Array(g.attributes.position.count * 3);
-    for (let v = 0; v < g.attributes.position.count; v++) {
-      const n = 0.8 + Math.random() * 0.4;
-      ca[v*3] = barkColor.r * n;
-      ca[v*3+1] = barkColor.g * n;
-      ca[v*3+2] = barkColor.b * n;
-    }
-    g.setAttribute('color', new THREE.BufferAttribute(ca, 3));
-    rootGeoms.push(g);
-    pos = nextPos;
-  }
-  if (rootGeoms.length) {
-    const merged = mergeGeometries(rootGeoms, false);
-    if (merged) scene.add(new THREE.Mesh(merged, barkMaterial));
-  }
-}
-
-setProgress(90);
-
-/* ============================================================
    FALLING LEAVES
    ============================================================ */
-const fallingLeaves = [];
-const fallingLeafGeom = createLeafGeometry();
-const fallingLeafMats = [
-  new THREE.MeshPhysicalMaterial({ color: 0x4a6a20, roughness: 0.6, side: THREE.DoubleSide, transparent: true, opacity: 0.85 }),
-  new THREE.MeshPhysicalMaterial({ color: 0x6a5a18, roughness: 0.6, side: THREE.DoubleSide, transparent: true, opacity: 0.8 }),
-  new THREE.MeshPhysicalMaterial({ color: 0x8a6a10, roughness: 0.6, side: THREE.DoubleSide, transparent: true, opacity: 0.75 }),
+const fallingLeaves=[];
+const flMats=[
+  new THREE.MeshPhysicalMaterial({color:0x4a6a20,roughness:0.6,side:THREE.DoubleSide,transparent:true,opacity:0.85}),
+  new THREE.MeshPhysicalMaterial({color:0x6a5a18,roughness:0.6,side:THREE.DoubleSide,transparent:true,opacity:0.8}),
+  new THREE.MeshPhysicalMaterial({color:0x8a6a10,roughness:0.6,side:THREE.DoubleSide,transparent:true,opacity:0.75}),
 ];
-
-for (let i = 0; i < 15; i++) {
-  const mat = fallingLeafMats[Math.floor(Math.random() * fallingLeafMats.length)];
-  const mesh = new THREE.Mesh(fallingLeafGeom, mat);
-  const s = 0.6 + Math.random() * 0.5;
-  mesh.scale.set(s, s, s);
-  resetFallingLeaf(mesh);
-  scene.add(mesh);
-  fallingLeaves.push({
-    mesh,
-    speedY: 0.003 + Math.random() * 0.005,
-    swaySpeed: 1 + Math.random() * 2,
-    swayAmount: 0.3 + Math.random() * 0.5,
-    rotSpeed: (Math.random() - 0.5) * 0.03,
-    phase: Math.random() * Math.PI * 2
-  });
+function resetFL(m){m.position.set((Math.random()-0.5)*4,3.5+Math.random()*4,(Math.random()-0.5)*4);m.rotation.set(Math.random()*Math.PI,Math.random()*Math.PI,Math.random()*Math.PI);}
+for(let i=0;i<12;i++){
+  const m=new THREE.Mesh(leafGeom,flMats[i%3]);
+  const s=0.5+Math.random()*0.5; m.scale.set(s,s,s);
+  resetFL(m); scene.add(m);
+  fallingLeaves.push({mesh:m,vy:0.002+Math.random()*0.004,ss:1+Math.random()*2,sa:0.3+Math.random()*0.5,rs:(Math.random()-0.5)*0.025,ph:Math.random()*6.28});
 }
-
-function resetFallingLeaf(mesh) {
-  mesh.position.set(
-    (Math.random() - 0.5) * 5,
-    4 + Math.random() * 4,
-    (Math.random() - 0.5) * 5
-  );
-  mesh.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI);
-}
-
-setProgress(95);
 
 /* ============================================================
-   RESIZE HANDLER
+   INTERACTION — raycasting + touch effects
    ============================================================ */
-window.addEventListener('resize', () => {
-  const w = window.innerWidth, h = window.innerHeight;
-  camera.aspect = w / h;
+const raycaster=new THREE.Raycaster();
+const pointer=new THREE.Vector2(-10,-10);
+let touchPt=new THREE.Vector3(0,-100,0);
+let touchStr=0;
+const touchRadius=2.5;
+
+// touch glow light
+const touchLight=new THREE.PointLight(0xd4a050,0,4);
+scene.add(touchLight);
+
+// touch indicator sphere
+const touchGlow=new THREE.Mesh(
+  new THREE.SphereGeometry(0.12,16,16),
+  new THREE.MeshBasicMaterial({color:0xd4a050,transparent:true,opacity:0,blending:THREE.AdditiveBlending})
+);
+scene.add(touchGlow);
+
+// burst particles pool
+const burstN=40;
+const burstPos=new Float32Array(burstN*3);
+const burstVel=[];
+const burstLife=new Float32Array(burstN);
+for(let i=0;i<burstN;i++){burstPos[i*3]=0;burstPos[i*3+1]=-100;burstPos[i*3+2]=0;burstVel.push(V3(0,0,0));burstLife[i]=0;}
+const burstGeom=new THREE.BufferGeometry();
+burstGeom.setAttribute('position',new THREE.BufferAttribute(burstPos,3));
+const burstMat=new THREE.PointsMaterial({color:0xe8c050,size:0.06,transparent:true,opacity:0.9,blending:THREE.AdditiveBlending,sizeAttenuation:true});
+const burstMesh=new THREE.Points(burstGeom,burstMat);
+scene.add(burstMesh);
+
+function triggerBurst(pt){
+  for(let i=0;i<burstN;i++){
+    burstPos[i*3]=pt.x; burstPos[i*3+1]=pt.y; burstPos[i*3+2]=pt.z;
+    burstVel[i].set((Math.random()-0.5)*0.08, (Math.random()-0.2)*0.06, (Math.random()-0.5)*0.08);
+    burstLife[i]=1.0;
+  }
+  burstGeom.attributes.position.needsUpdate=true;
+}
+
+// targets for raycasting
+const rayTargets=[];
+if(branchMesh) rayTargets.push(branchMesh);
+rayTargets.push(leafInst, fruitInst);
+
+function onPointerMove(e){
+  pointer.x=(e.clientX/innerWidth)*2-1;
+  pointer.y=-(e.clientY/innerHeight)*2+1;
+  raycaster.setFromCamera(pointer,camera);
+  const hits=raycaster.intersectObjects(rayTargets,false);
+  if(hits.length>0){
+    touchPt.copy(hits[0].point);
+    touchStr=Math.max(touchStr,0.8);
+    renderer.domElement.style.cursor='pointer';
+  } else {
+    renderer.domElement.style.cursor='grab';
+  }
+}
+function onPointerDown(e){
+  pointer.x=(e.clientX/innerWidth)*2-1;
+  pointer.y=-(e.clientY/innerHeight)*2+1;
+  raycaster.setFromCamera(pointer,camera);
+  const hits=raycaster.intersectObjects(rayTargets,false);
+  if(hits.length>0){
+    touchPt.copy(hits[0].point);
+    touchStr=3.0;
+    triggerBurst(hits[0].point);
+    // spawn extra falling leaves from touch point
+    for(let i=0;i<3;i++){
+      const fl=fallingLeaves[Math.floor(Math.random()*fallingLeaves.length)];
+      fl.mesh.position.copy(hits[0].point).add(V3((Math.random()-0.5)*0.3,Math.random()*0.2,(Math.random()-0.5)*0.3));
+    }
+  }
+}
+
+renderer.domElement.addEventListener('pointermove',onPointerMove);
+renderer.domElement.addEventListener('pointerdown',onPointerDown);
+
+setProgress(92);
+
+/* ============================================================
+   RESIZE
+   ============================================================ */
+addEventListener('resize',()=>{
+  camera.aspect=innerWidth/innerHeight;
   camera.updateProjectionMatrix();
-  renderer.setSize(w, h);
-  composer.setSize(w, h);
+  renderer.setSize(innerWidth,innerHeight);
+  composer.setSize(innerWidth,innerHeight);
 });
 
 /* ============================================================
    ANIMATION
    ============================================================ */
-const clock = new THREE.Clock();
-const leafMatrices = [];
-for (let i = 0; i < leafCount; i++) {
-  const m = new THREE.Matrix4();
-  leafMesh.getMatrixAt(i, m);
-  leafMatrices.push({ matrix: m.clone(), phase: Math.random() * Math.PI * 2 });
+const clock=new THREE.Clock();
+const leafBases=[];
+for(let i=0;i<leafCount;i++){
+  const m=new THREE.Matrix4(); leafInst.getMatrixAt(i,m);
+  leafBases.push({mat:m.clone(),ph:Math.random()*6.28});
 }
+const tPos=new THREE.Vector3(), tQuat=new THREE.Quaternion(), tScale=new THREE.Vector3();
+const tMat=new THREE.Matrix4();
 
-function animate() {
+function animate(){
   requestAnimationFrame(animate);
-  const time = clock.getElapsedTime();
-
-  wormholeMat.uniforms.uTime.value = time;
-
+  const t=clock.getElapsedTime();
   controls.update();
 
-  /* leaf sway */
-  const tempMatrix = new THREE.Matrix4();
-  const tempPos = new THREE.Vector3();
-  const tempQuat = new THREE.Quaternion();
-  const tempScale = new THREE.Vector3();
-  for (let i = 0; i < leafCount; i++) {
-    const ld = leafMatrices[i];
-    ld.matrix.decompose(tempPos, tempQuat, tempScale);
-    const swayAngle = Math.sin(time * 0.8 + ld.phase) * 0.03 + Math.sin(time * 1.3 + ld.phase * 2) * 0.015;
-    const swayQuat = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0.5).normalize(), swayAngle);
-    tempQuat.multiply(swayQuat);
-    tempMatrix.compose(tempPos, tempQuat, tempScale);
-    leafMesh.setMatrixAt(i, tempMatrix);
-  }
-  leafMesh.instanceMatrix.needsUpdate = true;
+  skyMat.uniforms.uTime.value=t;
 
-  /* fireflies */
-  const ffPos = fireflyGeom.attributes.position;
-  for (let i = 0; i < fireflyCount; i++) {
-    const sp = fireflySpeeds[i];
-    ffPos.setX(i, ffPos.getX(i) + sp.x + Math.sin(time * 0.5 + sp.phase) * 0.002);
-    ffPos.setY(i, ffPos.getY(i) + sp.y + Math.sin(time * 0.3 + sp.phase * 1.5) * 0.001);
-    ffPos.setZ(i, ffPos.getZ(i) + sp.z + Math.cos(time * 0.4 + sp.phase * 0.8) * 0.002);
-    if (Math.abs(ffPos.getX(i)) > 8 || ffPos.getY(i) > 10 || ffPos.getY(i) < 0 || Math.abs(ffPos.getZ(i)) > 8) {
-      ffPos.setXYZ(i, (Math.random()-0.5)*8, Math.random()*7+1, (Math.random()-0.5)*8);
-    }
-  }
-  ffPos.needsUpdate = true;
-  fireflyMat.opacity = 0.3 + Math.sin(time * 1.5) * 0.2;
+  // touch decay
+  touchStr*=0.965;
+  if(touchStr<0.005) touchStr=0;
 
-  /* falling leaves */
-  fallingLeaves.forEach(fl => {
-    fl.mesh.position.y -= fl.speedY;
-    fl.mesh.position.x += Math.sin(time * fl.swaySpeed + fl.phase) * fl.swayAmount * 0.01;
-    fl.mesh.position.z += Math.cos(time * fl.swaySpeed * 0.7 + fl.phase) * fl.swayAmount * 0.008;
-    fl.mesh.rotation.x += fl.rotSpeed;
-    fl.mesh.rotation.z += fl.rotSpeed * 0.7;
-    if (fl.mesh.position.y < -0.5) {
-      resetFallingLeaf(fl.mesh);
+  // update bark shader touch uniforms
+  barkMat.uniforms.uTouchPt.value.copy(touchPt);
+  barkMat.uniforms.uTouchStr.value=touchStr;
+
+  // touch glow visuals
+  touchLight.position.copy(touchPt);
+  touchLight.intensity=touchStr*1.5;
+  touchGlow.position.copy(touchPt);
+  touchGlow.material.opacity=touchStr*0.25;
+  touchGlow.scale.setScalar(1+touchStr*0.5);
+
+  // leaf sway with touch influence
+  for(let i=0;i<leafCount;i++){
+    const lb=leafBases[i];
+    lb.mat.decompose(tPos,tQuat,tScale);
+    let sway=1.0;
+    if(touchStr>0.01){
+      const d=tPos.distanceTo(touchPt);
+      if(d<touchRadius) sway+=((touchRadius-d)/touchRadius)*touchStr*4;
     }
+    const ang=(Math.sin(t*0.7+lb.ph)*0.025+Math.sin(t*1.2+lb.ph*2.3)*0.012)*sway;
+    const sq=new THREE.Quaternion().setFromAxisAngle(V3(1,0.2,0.5).normalize(),ang);
+    const fq=tQuat.clone().multiply(sq);
+    tMat.compose(tPos,fq,tScale);
+    leafInst.setMatrixAt(i,tMat);
+  }
+  leafInst.instanceMatrix.needsUpdate=true;
+
+  // fireflies
+  const fp=ffGeom.attributes.position;
+  for(let i=0;i<ffCount;i++){
+    const s=ffSpeeds[i];
+    fp.setX(i,fp.getX(i)+s.x+Math.sin(t*0.4+s.ph)*0.0015);
+    fp.setY(i,fp.getY(i)+s.y+Math.sin(t*0.25+s.ph*1.5)*0.001);
+    fp.setZ(i,fp.getZ(i)+s.z+Math.cos(t*0.35+s.ph*0.8)*0.0015);
+    if(Math.abs(fp.getX(i))>7||fp.getY(i)>9||fp.getY(i)<0||Math.abs(fp.getZ(i))>7)
+      fp.setXYZ(i,(Math.random()-0.5)*7,Math.random()*6+1,(Math.random()-0.5)*7);
+  }
+  fp.needsUpdate=true;
+  ffMat.opacity=0.25+Math.sin(t*1.2)*0.18;
+
+  // falling leaves
+  fallingLeaves.forEach(fl=>{
+    fl.mesh.position.y-=fl.vy;
+    fl.mesh.position.x+=Math.sin(t*fl.ss+fl.ph)*fl.sa*0.008;
+    fl.mesh.position.z+=Math.cos(t*fl.ss*0.7+fl.ph)*fl.sa*0.006;
+    fl.mesh.rotation.x+=fl.rs;
+    fl.mesh.rotation.z+=fl.rs*0.6;
+    if(fl.mesh.position.y<-0.3) resetFL(fl.mesh);
   });
 
-  /* sky slow rotation */
-  skySphere.rotation.y = time * 0.003;
+  // burst particles
+  let anyAlive=false;
+  for(let i=0;i<burstN;i++){
+    if(burstLife[i]>0){
+      anyAlive=true;
+      burstLife[i]-=0.018;
+      burstVel[i].y-=0.0008; // gravity
+      burstPos[i*3]+=burstVel[i].x;
+      burstPos[i*3+1]+=burstVel[i].y;
+      burstPos[i*3+2]+=burstVel[i].z;
+      if(burstLife[i]<=0) burstPos[i*3+1]=-100;
+    }
+  }
+  if(anyAlive){
+    burstGeom.attributes.position.needsUpdate=true;
+    burstMat.opacity=Math.max(0,...burstLife)*0.9;
+  }
 
   composer.render();
 }
@@ -771,12 +815,11 @@ function animate() {
    START
    ============================================================ */
 setProgress(100);
-
-setTimeout(() => {
+setTimeout(()=>{
   document.getElementById('loading').classList.add('fade-out');
   document.getElementById('overlay').classList.add('visible');
   animate();
-}, 1200);
+},1000);
 
 </script>
 </body>
