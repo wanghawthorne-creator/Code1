@@ -334,7 +334,7 @@ function generateBranch(start, dir, length, radius, depth, maxDepth) {
   const endDir = currentDir.clone();
 
   if (depth >= 3) {
-    const leafCount = depth >= 5 ? 12 + Math.floor(Math.random() * 10) : 6 + Math.floor(Math.random() * 6);
+    const leafCount = depth >= 5 ? 18 + Math.floor(Math.random() * 14) : 8 + Math.floor(Math.random() * 8);
     for (let i = 0; i < leafCount; i++) {
       const spread = 0.15 + depth * 0.05;
       const offset = new THREE.Vector3(
@@ -714,7 +714,6 @@ for (let i = 0; i < leafCount; i++) {
 function animate() {
   requestAnimationFrame(animate);
   const time = clock.getElapsedTime();
-  const delta = clock.getDelta();
 
   wormholeMat.uniforms.uTime.value = time;
 
