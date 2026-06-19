@@ -6,10 +6,10 @@
 <title>庭有枇杷树 — 项脊轩志</title>
 <style>
 *,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
-html,body{width:100%;height:100%;overflow:hidden;background:#000;font-family:"楷体","KaiTi","STKaiti","SimSun",serif}
+html,body{width:100%;height:100%;overflow:hidden;background:#2a3520;font-family:"楷体","KaiTi","STKaiti","SimSun",serif}
 canvas{display:block;width:100%;height:100%;cursor:grab}
 canvas:active{cursor:grabbing}
-#loading{position:fixed;inset:0;background:#000;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:1000;transition:opacity 2.5s ease,visibility 2.5s ease}
+#loading{position:fixed;inset:0;background:#2a3520;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:1000;transition:opacity 2.5s ease,visibility 2.5s ease}
 #loading.fade-out{opacity:0;visibility:hidden;pointer-events:none}
 .loading-title{font-size:clamp(2rem,6vw,4rem);color:#c9a96e;letter-spacing:0.6em;margin-bottom:1.5rem;text-shadow:0 0 40px rgba(201,169,110,0.3);animation:breathe 3s ease-in-out infinite}
 .loading-quote{font-size:clamp(0.9rem,2.5vw,1.4rem);color:#7a6650;letter-spacing:0.25em;line-height:2.2;text-align:center;max-width:600px;padding:0 2rem}
@@ -26,7 +26,7 @@ canvas:active{cursor:grabbing}
 .bottom-quote p{font-size:clamp(0.8rem,1.8vw,1.1rem);color:#8a7a60;letter-spacing:0.15em;line-height:2;text-shadow:0 0 20px rgba(0,0,0,0.8)}
 .bottom-quote .source{font-size:clamp(0.6rem,1.2vw,0.75rem);color:#5a4a3a;margin-top:0.8rem;letter-spacing:0.3em}
 .hint{position:absolute;bottom:2rem;left:3rem;font-size:0.75rem;color:#4a3a2a;letter-spacing:0.2em}
-#vignette{position:fixed;inset:0;pointer-events:none;z-index:5;background:radial-gradient(ellipse at center,transparent 40%,rgba(0,0,0,0.65) 100%)}
+#vignette{position:fixed;inset:0;pointer-events:none;z-index:5;background:radial-gradient(ellipse at center,transparent 40%,rgba(0,0,0,0.45) 100%)}
 </style>
 </head>
 <body>
@@ -61,133 +61,215 @@ const V3=(x,y,z)=>new THREE.Vector3(x,y,z);
 const fill=document.getElementById('loading-fill');
 const prog=p=>{fill.style.width=Math.min(p,100)+'%';};
 
-/* ===================== SCENE ===================== */
+/* ==================== SCENE SETUP ==================== */
 const scene=new THREE.Scene();
-scene.fog=new THREE.FogExp2(0x000000,0.01);
 const camera=new THREE.PerspectiveCamera(42,innerWidth/innerHeight,0.1,600);
 camera.position.set(7,3.5,7);
 const renderer=new THREE.WebGLRenderer({antialias:true});
 renderer.setSize(innerWidth,innerHeight);
 renderer.setPixelRatio(Math.min(devicePixelRatio,2));
 renderer.toneMapping=THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure=1.1;
+renderer.toneMappingExposure=1.15;
 renderer.outputColorSpace=THREE.SRGBColorSpace;
 document.body.prepend(renderer.domElement);
 
 const controls=new OrbitControls(camera,renderer.domElement);
 controls.enableDamping=true;controls.dampingFactor=0.05;
-controls.autoRotate=true;controls.autoRotateSpeed=0.2;
+controls.autoRotate=true;controls.autoRotateSpeed=0.15;
 controls.minDistance=2.5;controls.maxDistance=22;
 controls.target.set(0,2.8,0);controls.maxPolarAngle=Math.PI*0.88;
 controls.update();
 
 const composer=new EffectComposer(renderer);
 composer.addPass(new RenderPass(scene,camera));
-composer.addPass(new UnrealBloomPass(new THREE.Vector2(innerWidth,innerHeight),0.5,0.7,0.32));
+const bloom=new UnrealBloomPass(new THREE.Vector2(innerWidth,innerHeight),0.35,0.6,0.4);
+composer.addPass(bloom);
 prog(8);
 
-/* ===================== LIGHTING ===================== */
-scene.add(new THREE.AmbientLight(0x151520,0.45));
-const moon=new THREE.DirectionalLight(0xc8c0a0,0.8);moon.position.set(-6,14,8);scene.add(moon);
-const fillL=new THREE.DirectionalLight(0x3a5070,0.2);fillL.position.set(5,2,-6);scene.add(fillL);
-const rimL=new THREE.DirectionalLight(0x506080,0.3);rimL.position.set(0,4,-10);scene.add(rimL);
-const warmSpot=new THREE.PointLight(0xc9a060,0.15,14);warmSpot.position.set(1,0.5,2);scene.add(warmSpot);
-const canopyGlow=new THREE.PointLight(0x5a7a4a,0.0,10);canopyGlow.position.set(-0.5,5,0);scene.add(canopyGlow);
-prog(12);
-
-/* ===================== SKY — sparse stars, subtle color ===================== */
+/* ==================== NATURAL SKY BACKGROUND ==================== */
+// Soft gradient sky — dawn/dusk atmosphere with blurred foliage silhouette
 const skyVS=`varying vec3 vDir;void main(){vDir=(modelMatrix*vec4(position,1.0)).xyz;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);}`;
 const skyFS=`
-uniform float uTime;varying vec3 vDir;
+uniform float uTime;
+varying vec3 vDir;
 float hash(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}
 float noise(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.0-2.0*f);return mix(mix(hash(i),hash(i+vec2(1,0)),f.x),mix(hash(i+vec2(0,1)),hash(i+vec2(1,1)),f.x),f.y);}
-float fbm(vec2 p){float v=0.0,a=0.5;mat2 r=mat2(0.8,0.6,-0.6,0.8);for(int i=0;i<5;i++){v+=a*noise(p);p=r*p*2.0;a*=0.5;}return v;}
+float fbm(vec2 p){float v=0.0,a=0.5;mat2 r=mat2(0.8,0.6,-0.6,0.8);for(int i=0;i<4;i++){v+=a*noise(p);p=r*p*2.0;a*=0.5;}return v;}
 void main(){
-  vec3 d=normalize(vDir);float phi=atan(d.z,d.x),theta=acos(clamp(d.y,-1.0,1.0));
-  float r=theta/3.14159;
-  float n=fbm(vec2(phi*0.8,theta*1.2)+uTime*0.003)*0.5;
-  vec3 col=vec3(0.0);
-  col+=vec3(0.025,0.005,0.06)*n*smoothstep(0.6,0.0,r);
-  col+=vec3(0.0,0.015,0.05)*fbm(vec2(phi*1.5,theta*2.0)-uTime*0.005)*(1.0-r*0.5)*0.4;
+  vec3 d=normalize(vDir);
+  // vertical gradient: ground to zenith
+  float h=d.y*0.5+0.5; // 0 at horizon, 1 at zenith
+  // dawn sky palette
+  vec3 zenith=vec3(0.32,0.42,0.56);  // soft blue-grey
+  vec3 mid=vec3(0.55,0.52,0.48);     // warm grey
+  vec3 horizon=vec3(0.72,0.62,0.52); // warm amber at horizon
+  vec3 ground=vec3(0.18,0.20,0.14);  // dark earth tone below
+  vec3 col;
+  if(h>0.5){
+    col=mix(mid,zenith,smoothstep(0.5,1.0,h));
+  } else if(h>0.3){
+    col=mix(horizon,mid,smoothstep(0.3,0.5,h));
+  } else {
+    col=mix(ground,horizon,smoothstep(0.0,0.3,h));
+  }
+  // subtle warm glow near the horizon (like diffused sunlight)
+  float sunGlow=exp(-pow((d.y-0.02)*6.0,2.0));
+  col+=vec3(0.15,0.10,0.05)*sunGlow*0.5;
+  // blurred foliage silhouette near the horizon
+  float phi=atan(d.z,d.x);
+  float foliage=fbm(vec2(phi*3.0,d.y*8.0+1.0))*smoothstep(0.25,0.1,d.y)*smoothstep(-0.1,0.05,d.y);
+  col=mix(col,vec3(0.12,0.16,0.08),foliage*0.5);
+  // atmospheric haze
+  col+=vec3(0.05,0.04,0.03)*smoothstep(0.3,0.0,abs(d.y))*0.4;
+  col*=0.65;
   gl_FragColor=vec4(col,1.0);
 }`;
 const skyMat=new THREE.ShaderMaterial({vertexShader:skyVS,fragmentShader:skyFS,uniforms:{uTime:{value:0}},side:THREE.BackSide});
 scene.add(new THREE.Mesh(new THREE.IcosahedronGeometry(250,5),skyMat));
+prog(14);
 
-// sparse bright star sprites
-(function(){
-  const c=document.createElement('canvas');c.width=64;c.height=64;
-  const ctx=c.getContext('2d');
-  const g=ctx.createRadialGradient(32,32,0,32,32,30);
-  g.addColorStop(0,'rgba(255,255,255,1)');g.addColorStop(0.12,'rgba(255,250,240,0.7)');
-  g.addColorStop(0.35,'rgba(180,200,255,0.15)');g.addColorStop(1,'rgba(0,0,0,0)');
-  ctx.fillStyle=g;ctx.fillRect(0,0,64,64);
-  const tex=new THREE.CanvasTexture(c);
-  for(let i=0;i<12;i++){
-    const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:tex,transparent:true,blending:THREE.AdditiveBlending,opacity:0.5+Math.random()*0.5}));
-    sp.scale.setScalar(1.5+Math.random()*3);
-    const R=160+Math.random()*40,th=Math.random()*Math.PI*2,ph=Math.random()*Math.PI*0.7;
-    sp.position.set(R*Math.sin(ph)*Math.cos(th),R*Math.cos(ph)+15,R*Math.sin(ph)*Math.sin(th));
-    sp.userData.twinklePhase=Math.random()*6.28;
-    sp.userData.twinkleSpeed=0.5+Math.random()*1.5;
-    scene.add(sp);
-  }
-})();
+/* ==================== LIGHTING — natural, soft ==================== */
+// Ambient: gentle fill from sky
+scene.add(new THREE.AmbientLight(0x8090a0,0.5));
+// Key light: warm directional (sun through clouds)
+const sunLight=new THREE.DirectionalLight(0xf5e0c0,0.9);
+sunLight.position.set(-5,12,8);scene.add(sunLight);
+// Fill light: cool bounce from sky
+const skyFill=new THREE.DirectionalLight(0x7090b0,0.25);
+skyFill.position.set(4,6,-5);scene.add(skyFill);
+// Rim light: subtle backlight
+const rimL=new THREE.DirectionalLight(0xa0a0b0,0.2);
+rimL.position.set(0,5,-10);scene.add(rimL);
+// Warm point near trunk base — subtle warmth
+const warmSpot=new THREE.PointLight(0xc9a060,0.12,14);
+warmSpot.position.set(1,0.5,2);scene.add(warmSpot);
+// Canopy glow — increases as tree grows
+const canopyGlow=new THREE.PointLight(0x5a8a3a,0.0,12);
+canopyGlow.position.set(-0.5,5,0);scene.add(canopyGlow);
 prog(18);
 
-/* ===================== BARK SHADER — cracks, growth transition ===================== */
+/* ==================== BARK SHADER ==================== */
+// Procedural bark with lenticels, longitudinal fissures, leaf scars, and dormant buds.
+// Dead state: ashen grey. Alive state: warm brown with green moss highlights.
 const MAX_SRC=8;
 const gSrcArr=Array.from({length:MAX_SRC},()=>new THREE.Vector3(0,-100,0));
 const gRadArr=new Array(MAX_SRC).fill(0);
 
 const barkVS=`
-varying vec3 vWP;varying vec3 vN;varying vec3 vVP;
+varying vec3 vWP;varying vec3 vN;varying vec3 vVP;varying vec2 vUV;
 void main(){
   vec4 wp=modelMatrix*vec4(position,1.0);vWP=wp.xyz;
   vN=normalize(mat3(modelMatrix)*normal);
   vVP=(viewMatrix*wp).xyz;
+  vUV=uv;
   gl_Position=projectionMatrix*viewMatrix*wp;
 }`;
 const barkFS=`
 uniform vec3 uGS[8];uniform float uGR[8];
 uniform vec3 uTP;uniform float uTS;
-varying vec3 vWP;varying vec3 vN;varying vec3 vVP;
+varying vec3 vWP;varying vec3 vN;varying vec3 vVP;varying vec2 vUV;
 float hash(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}
+float hash21(vec2 p){return fract(sin(dot(p,vec2(269.5,183.3)))*43758.5453);}
 float noise(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.0-2.0*f);return mix(mix(hash(i),hash(i+vec2(1,0)),f.x),mix(hash(i+vec2(0,1)),hash(i+vec2(1,1)),f.x),f.y);}
 float fbm(vec2 p){float v=0.0,a=0.5;mat2 r=mat2(0.8,0.6,-0.6,0.8);for(int i=0;i<5;i++){v+=a*noise(p);p=r*p*2.0;a*=0.5;}return v;}
+
+// Voronoi for lenticels (small raised dots on bark)
+float voronoi(vec2 p){
+  vec2 i=floor(p),f=fract(p);float md=1.0;
+  for(int y=-1;y<=1;y++)for(int x=-1;x<=1;x++){
+    vec2 n=vec2(float(x),float(y));
+    vec2 o=vec2(hash(i+n),hash21(i+n))*0.8+0.1;
+    float d=length(n+o-f);md=min(md,d);
+  }
+  return md;
+}
+
 float getGrowth(){
   float m=0.0;
   for(int i=0;i<8;i++){
     float d=distance(vWP,uGS[i]);
-    m=max(m,smoothstep(uGR[i],max(0.0,uGR[i]-1.0),d));
+    m=max(m,smoothstep(uGR[i],max(0.0,uGR[i]-1.2),d));
   }
   return clamp(m,0.0,1.0);
 }
+
 void main(){
-  vec2 bk=vec2(atan(vWP.x,vWP.z)*2.0,vWP.y*4.0);
-  float bark=fbm(bk*5.0);
-  float groove=smoothstep(0.3,0.55,bark);
-  float fine=noise(bk*35.0)*0.1;
-  float crack=fbm(bk*8.0+3.0);
-  float crackLine=smoothstep(0.42,0.48,crack)*0.25;
+  // bark UV based on cylindrical coords
+  vec2 bk=vec2(atan(vWP.x,vWP.z)*2.0, vWP.y*4.0);
+
+  // longitudinal fissures (deep vertical cracks)
+  float fissure=fbm(bk*vec2(6.0,2.5));
+  float fissureLine=smoothstep(0.35,0.50,fissure);
+
+  // fine bark texture
+  float fineTex=noise(bk*40.0)*0.08;
+
+  // transverse cracks (horizontal)
+  float transCrack=fbm(bk*vec2(2.0,8.0)+5.0);
+  float transLine=smoothstep(0.44,0.50,transCrack)*0.18;
+
+  // lenticels — small raised pores scattered on bark
+  float lenticel=voronoi(bk*18.0);
+  float lenticelDot=smoothstep(0.12,0.06,lenticel)*0.22;
+
+  // leaf scars — larger, oval, scattered marks where old leaves fell
+  float leafScar=voronoi(bk*5.0+vec2(3.7,1.2));
+  float scarMark=smoothstep(0.15,0.08,leafScar)*smoothstep(3.0,1.5,vWP.y)*0.15;
+
+  // dormant buds — tiny raised bumps near branch junctions
+  float budVor=voronoi(bk*12.0+vec2(7.0,2.0));
+  float budDot=smoothstep(0.10,0.05,budVor)*smoothstep(0.5,2.5,vWP.y)*0.12;
+
   float growth=getGrowth();
-  float crackDepth=mix(0.75,0.4,growth);
-  vec3 deadBase=vec3(0.30,0.27,0.24);vec3 deadDark=vec3(0.13,0.11,0.10);
-  vec3 liveBase=vec3(0.38,0.27,0.17);vec3 liveDark=vec3(0.18,0.12,0.07);
+
+  // dead bark: ashen grey with subtle warm undertone
+  vec3 deadBase=vec3(0.34,0.31,0.28);
+  vec3 deadDark=vec3(0.14,0.12,0.11);
+  // alive bark: warm brown with greenish tones
+  vec3 liveBase=vec3(0.42,0.30,0.18);
+  vec3 liveDark=vec3(0.20,0.14,0.08);
+
   vec3 base=mix(deadBase,liveBase,growth);
   vec3 dark=mix(deadDark,liveDark,growth);
-  vec3 col=mix(base,dark,groove*crackDepth+crackLine);
-  col+=mix(vec3(0.0),vec3(0.02,0.04,0.01),growth*noise(bk*4.0)*0.8);
-  col+=fine*mix(vec3(0.08),vec3(0.12,0.08,0.03),growth);
+
+  // compose bark surface
+  float crackDepth=mix(0.8,0.45,growth);
+  vec3 col=mix(base,dark,fissureLine*crackDepth+transLine);
+  col+=fineTex*mix(vec3(0.06),vec3(0.10,0.07,0.03),growth);
+
+  // lenticels — lighter raised dots
+  col+=mix(vec3(0.06),vec3(0.12,0.08,0.04),growth)*lenticelDot;
+
+  // leaf scars — slightly darker oval marks
+  col-=vec3(0.06,0.04,0.02)*scarMark*growth;
+
+  // dormant buds — greenish bumps when alive
+  col+=vec3(0.04,0.08,0.02)*budDot*growth;
+
+  // moss/lichen patches on alive bark
+  float mossPatch=fbm(bk*3.0+vec2(2.0,5.0));
+  float mossStr=smoothstep(0.55,0.7,mossPatch)*growth*0.25;
+  col=mix(col,vec3(0.15,0.22,0.08),mossStr);
+
+  // lighting
   vec3 ld=normalize(vec3(-0.5,1.0,0.8));
   float diff=max(dot(vN,ld),0.0);
-  float ao=0.65+0.35*(1.0-groove);
-  col*=(0.28+diff*0.72)*ao;
+  float ao=0.6+0.4*(1.0-fissureLine);
+  col*=(0.30+diff*0.70)*ao;
+
+  // rim highlight
   vec3 vd=normalize(-vVP);
   float rim=1.0-max(dot(vN,vd),0.0);
-  col+=vec3(0.10,0.08,0.05)*pow(rim,3.0)*0.2;
+  col+=vec3(0.08,0.07,0.05)*pow(rim,3.0)*0.25;
+
+  // normal perturbation for fissures (fake bump)
+  float bumpStr=fissureLine*0.5+lenticelDot*0.3;
+  col*=1.0-bumpStr*0.1;
+
+  // touch glow
   float td=distance(vWP,uTP);
-  col+=vec3(0.85,0.6,0.3)*exp(-td*2.5)*uTS*0.6;
+  col+=vec3(0.90,0.65,0.30)*exp(-td*2.5)*uTS*0.5;
+
   gl_FragColor=vec4(col,1.0);
 }`;
 const barkMat=new THREE.ShaderMaterial({
@@ -196,11 +278,14 @@ const barkMat=new THREE.ShaderMaterial({
 });
 prog(24);
 
-/* ===================== LEAF SHADER — glossy green top, rusty fuzz bottom ===================== */
+/* ==================== LEAF SHADER ==================== */
+// Oblanceolate leaf: glossy dark green top with specular highlight,
+// rusty-brown fuzzy underside. Subsurface scattering on edges.
 const leafVS=`
-varying vec3 vN;varying vec3 vWP;varying vec3 vVD;varying vec3 vCol;
+varying vec3 vN;varying vec3 vWP;varying vec3 vVD;varying vec3 vCol;varying vec2 vLeafUV;
 void main(){
   vec3 tp=position;vec3 tn=normal;
+  vLeafUV=uv;
   #ifdef USE_INSTANCING
     tp=(instanceMatrix*vec4(tp,1.0)).xyz;
     tn=mat3(instanceMatrix)*tn;
@@ -216,31 +301,51 @@ void main(){
   gl_Position=projectionMatrix*viewMatrix*wp;
 }`;
 const leafFS=`
-varying vec3 vN;varying vec3 vWP;varying vec3 vVD;varying vec3 vCol;
+varying vec3 vN;varying vec3 vWP;varying vec3 vVD;varying vec3 vCol;varying vec2 vLeafUV;
 float hash(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}
+float noise(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.0-2.0*f);return mix(mix(hash(i),hash(i+vec2(1,0)),f.x),mix(hash(i+vec2(0,1)),hash(i+vec2(1,1)),f.x),f.y);}
 void main(){
   vec3 n=gl_FrontFacing?normalize(vN):-normalize(vN);
   vec3 v=normalize(vVD);
   vec3 l=normalize(vec3(-0.5,1.0,0.8));
+  float diff=max(dot(n,l),0.0);
+  float rim=pow(1.0-max(dot(n,v),0.0),3.0);
+
+  // subsurface scattering: light passing through leaf edges
+  float sss=pow(max(dot(-v,l),0.0),3.0)*0.25;
+  sss+=rim*0.15;
+
   vec3 color;
   if(gl_FrontFacing){
-    vec3 base=vec3(0.08,0.24,0.05)*vCol*1.8;
-    float diff=max(dot(n,l),0.0);
-    color=base*(0.3+diff*0.7);
+    // adaxial (top): leathery, glossy dark green
+    vec3 base=vec3(0.06,0.20,0.04)*vCol*2.0;
+    // venation pattern — subtle midrib
+    float vein=smoothstep(0.02,0.0,abs(vLeafUV.x-0.5))*0.15;
+    base+=vec3(0.0,0.04,0.0)*vein;
+    color=base*(0.30+diff*0.70);
+    // glossy specular (waxy cuticle)
     vec3 h=normalize(l+v);
-    color+=vec3(0.55,0.65,0.45)*pow(max(dot(n,h),0.0),55.0)*0.35;
-    float rim=pow(1.0-max(dot(n,v),0.0),3.5);
-    color+=vec3(0.06,0.10,0.03)*rim*0.3;
+    float spec=pow(max(dot(n,h),0.0),60.0);
+    color+=vec3(0.50,0.55,0.40)*spec*0.4;
+    // rim light
+    color+=vec3(0.04,0.08,0.02)*rim*0.3;
+    // SSS warm glow at edges
+    color+=vec3(0.15,0.25,0.05)*sss;
   } else {
-    vec3 base=vec3(0.46,0.32,0.17);
-    float diff=max(dot(n,l),0.0);
-    color=base*(0.25+diff*0.4);
-    float rim=pow(1.0-max(dot(n,v),0.0),1.5);
-    color+=vec3(0.52,0.34,0.15)*rim*0.6;
-    float fuzz=hash(floor(vWP.xz*250.0));
-    color+=vec3(0.10,0.05,0.02)*fuzz*0.18;
+    // abaxial (bottom): dense rusty-brown tomentum
+    vec3 base=vec3(0.50,0.35,0.18);
+    color=base*(0.22+diff*0.35);
+    // fuzzy tomentum texture
+    float fuzz=hash(floor(vWP.xz*300.0));
+    float fuzz2=hash(floor(vWP.xz*150.0+vec2(77.0)));
+    color+=vec3(0.12,0.06,0.02)*fuzz*0.20;
+    color+=vec3(0.08,0.04,0.01)*fuzz2*0.15;
+    // fuzzy rim (light scattering through hairs)
+    color+=vec3(0.55,0.38,0.18)*pow(rim,1.5)*0.5;
+    // SSS through leaf
+    color+=vec3(0.10,0.15,0.03)*sss;
   }
-  gl_FragColor=vec4(color,0.96);
+  gl_FragColor=vec4(color,0.97);
 }`;
 const leafMat=new THREE.ShaderMaterial({
   vertexShader:leafVS,fragmentShader:leafFS,
@@ -248,7 +353,8 @@ const leafMat=new THREE.ShaderMaterial({
 });
 prog(28);
 
-/* ===================== TAPERED TUBE HELPER ===================== */
+/* ==================== TAPERED TUBE HELPER ==================== */
+// Creates a smooth tube along a CatmullRomCurve3 with linearly-interpolated radius
 function taperedTube(pts,rS,rE,segs,rad){
   const curve=new THREE.CatmullRomCurve3(pts);
   const g=new THREE.TubeGeometry(curve,segs,1.0,rad,false);
@@ -266,12 +372,15 @@ function taperedTube(pts,rS,rE,segs,rad){
   pos.needsUpdate=true;g.computeVertexNormals();return g;
 }
 
-/* ===================== TREE STRUCTURE ===================== */
+/* ==================== TREE STRUCTURE ==================== */
+// Sympodial branching: main trunk splits, each fork produces a leading shoot
 const brG=[];const leafD=[];const flowerD=[];const fruitD=[];
 
+// Trunk — gently curved, slight lean
 const trunk=[V3(0,0,0),V3(0.12,0.55,0.08),V3(-0.06,1.2,0.14),V3(0.14,1.9,-0.04),V3(0.02,2.55,0.08)];
 brG.push(taperedTube(trunk,0.30,0.16,16,16));
 
+// Main branches — asymmetric S-curves, Chinese aesthetic
 const a0=trunk[4];
 const brA=[a0,V3(a0.x+0.35,a0.y+0.55,a0.z+0.12),V3(a0.x+0.7,a0.y+1.3,a0.z-0.1),V3(a0.x+0.45,a0.y+2.1,a0.z+0.25),V3(a0.x+0.15,a0.y+2.8,a0.z+0.05)];
 brG.push(taperedTube(brA,0.13,0.035,14,14));
@@ -293,6 +402,7 @@ brG.push(taperedTube(brE,0.07,0.02,10,10));
 
 prog(38);
 
+// Branch tips for sub-branch spawning
 const mainTips=[
   {pos:brA[4],dir:V3(-0.2,0.6,0.1).normalize(),r:0.035},
   {pos:brA[3],dir:V3(0.5,0.4,-0.2).normalize(),r:0.04},
@@ -307,7 +417,8 @@ const mainTips=[
   {pos:b0,dir:V3(0.3,0.5,0.4).normalize(),r:0.05},
 ];
 
-/* ===================== SUB-BRANCHES ===================== */
+/* ==================== SUB-BRANCHES ==================== */
+// Recursive sub-branch generation with leaf, flower, and fruit placement
 function subBranch(start,dir,len,rad,depth,maxD){
   if(depth>maxD||rad<0.004)return;
   const n=3+Math.floor(Math.random()*2);
@@ -319,6 +430,8 @@ function subBranch(start,dir,len,rad,depth,maxD){
   }
   brG.push(taperedTube(pts,rad,rad*0.45,Math.max(4,8-depth),Math.max(6,12-depth*2)));
   const end=pts[pts.length-1];
+
+  // Place leaves at branch tips and along branches
   if(depth>=1){
     const lc=depth>=2?16+Math.floor(Math.random()*12):8+Math.floor(Math.random()*6);
     const sp=0.12+depth*0.06;
@@ -334,12 +447,16 @@ function subBranch(start,dir,len,rad,depth,maxD){
       }
     }
   }
+
+  // Place flowers (panicle clusters) and fruits at branch ends
   if(depth>=1&&Math.random()>0.4){
     const fc=2+Math.floor(Math.random()*3);
     for(let i=0;i<fc;i++) flowerD.push(end.clone().add(V3((Math.random()-0.5)*0.1,Math.random()*0.06,(Math.random()-0.5)*0.1)));
     const frc=2+Math.floor(Math.random()*4);
     for(let i=0;i<frc;i++) fruitD.push(end.clone().add(V3((Math.random()-0.5)*0.16,-Math.random()*0.16-0.02,(Math.random()-0.5)*0.16)));
   }
+
+  // Recurse: sympodial forking
   if(depth<maxD){
     const nc=depth<1?3:2+Math.floor(Math.random()*2);
     for(let i=0;i<nc;i++){
@@ -355,7 +472,8 @@ function subBranch(start,dir,len,rad,depth,maxD){
 mainTips.forEach(t=>subBranch(t.pos,t.dir,0.8+Math.random()*0.6,t.r,0,3));
 prog(50);
 
-/* ===================== ROOTS ===================== */
+/* ==================== ROOTS ==================== */
+// Surface roots radiating from trunk base
 for(let i=0;i<5;i++){
   const a=(i/5)*Math.PI*2+Math.random()*0.3;
   const pts=[V3(Math.cos(a)*0.14,0.28,Math.sin(a)*0.14),V3(Math.cos(a)*0.26,0.12,Math.sin(a)*0.26),V3(Math.cos(a)*0.36,0.01,Math.sin(a)*0.36),V3(Math.cos(a)*0.42,-0.04,Math.sin(a)*0.42)];
@@ -371,23 +489,37 @@ for(let i=0;i<10;i++){
 }
 prog(56);
 
-/* ===================== MERGE BRANCHES ===================== */
+/* ==================== MERGE ALL BRANCHES INTO SINGLE MESH ==================== */
 let branchMesh;
 const merged=mergeGeometries(brG,false);
 if(merged){branchMesh=new THREE.Mesh(merged,barkMat);scene.add(branchMesh);}
 prog(62);
 
-/* ===================== LEAVES ===================== */
+/* ==================== LEAF GEOMETRY — oblanceolate with serrated margin ==================== */
 function mkLeaf(){
-  const sh=new THREE.Shape();const w=0.05,l=0.14;
+  const sh=new THREE.Shape();
+  const w=0.048,l=0.14;
+  // oblanceolate: narrow at base, widest near 2/3 up, pointed tip
   sh.moveTo(0,-l);
-  sh.bezierCurveTo(w*0.35,-l*0.6,w*1.05,-l*0.15,w,0.02);
-  sh.bezierCurveTo(w*0.85,l*0.4,w*0.45,l*0.78,0,l);
-  sh.bezierCurveTo(-w*0.45,l*0.78,-w*0.85,l*0.4,-w,0.02);
-  sh.bezierCurveTo(-w*1.05,-l*0.15,-w*0.35,-l*0.6,0,-l);
-  const g=new THREE.ShapeGeometry(sh,8);
+  sh.bezierCurveTo(w*0.2,-l*0.7, w*0.6,-l*0.3, w*0.95,-l*0.05);
+  sh.bezierCurveTo(w*1.0, l*0.15, w*0.85, l*0.45, w*0.5, l*0.7);
+  sh.bezierCurveTo(w*0.25, l*0.88, w*0.08, l*0.95, 0, l);
+  sh.bezierCurveTo(-w*0.08, l*0.95, -w*0.25, l*0.88, -w*0.5, l*0.7);
+  sh.bezierCurveTo(-w*0.85, l*0.45, -w*1.0, l*0.15, -w*0.95,-l*0.05);
+  sh.bezierCurveTo(-w*0.6,-l*0.3, -w*0.2,-l*0.7, 0,-l);
+  const g=new THREE.ShapeGeometry(sh,10);
   const p=g.attributes.position;
-  for(let i=0;i<p.count;i++){const x=p.getX(i),y=p.getY(i);p.setZ(i,-Math.abs(x)*3*0.12+Math.sin(y*10)*0.004);}
+  // curve leaf: slight droop, midrib curl, serrated edge wobble
+  for(let i=0;i<p.count;i++){
+    const x=p.getX(i),y=p.getY(i);
+    const edgeDist=Math.abs(x)/w;
+    // serrated margin: tiny sine waves along edge
+    const serration=Math.sin(y*80)*0.0015*edgeDist;
+    // midrib curl and natural droop
+    const z=-Math.abs(x)*2.5*0.12+Math.sin(y*8)*0.003+serration;
+    p.setX(i,x+serration*0.5);
+    p.setZ(i,z);
+  }
   p.needsUpdate=true;g.computeVertexNormals();return g;
 }
 const leafGeom=mkLeaf();
@@ -402,7 +534,7 @@ for(let i=0;i<leafCount;i++){
   dum.rotateZ(Math.random()*Math.PI*2);dum.rotateX((Math.random()-0.5)*0.7);
   const s=0.6+Math.random()*0.6;dum.scale.set(0.001,0.001,0.001);
   dum.updateMatrix();leafInst.setMatrixAt(i,dum.matrix);
-  const c=new THREE.Color().setHSL(0.25+(Math.random()-0.5)*0.09,0.4+Math.random()*0.38,0.11+Math.random()*0.17);
+  const c=new THREE.Color().setHSL(0.25+(Math.random()-0.5)*0.08,0.45+Math.random()*0.35,0.10+Math.random()*0.15);
   leafInst.setColorAt(i,c);
   leafBases.push({p:ld.p.clone(),q:dum.quaternion.clone(),s:s,ph:Math.random()*6.28});
   dum.scale.set(s,s,s);dum.updateMatrix();
@@ -412,19 +544,42 @@ if(leafInst.instanceColor)leafInst.instanceColor.needsUpdate=true;
 scene.add(leafInst);
 prog(72);
 
-/* ===================== FLOWERS — panicle clusters ===================== */
+/* ==================== FLOWER GEOMETRY — panicle with 5-petal florets ==================== */
+// Eriobotrya japonica: terminal panicle, 5 white petals, ~20 yellow stamens
 function mkPanicle(){
   const gs=[];
-  for(let i=0;i<7;i++){
-    const r=0.006+Math.random()*0.005;
-    const s=new THREE.SphereGeometry(r,6,6);
-    const a=(i/7)*Math.PI*2+Math.random()*0.5,h=i*0.007;
-    s.translate(Math.cos(a)*0.015,h,Math.sin(a)*0.015);gs.push(s);
+  // central florets
+  for(let i=0;i<9;i++){
+    const a=(i/9)*Math.PI*2+Math.random()*0.4;
+    const h=i*0.005+Math.random()*0.003;
+    const r=0.012+Math.random()*0.008;
+    // 5-petal floret (simplified as slightly squished sphere)
+    const s=new THREE.SphereGeometry(r,8,6);
+    const pos=s.attributes.position;
+    for(let j=0;j<pos.count;j++){
+      const px=pos.getX(j),py=pos.getY(j),pz=pos.getZ(j);
+      // flatten slightly to petal-like shape
+      pos.setY(j,py*0.6);
+    }
+    pos.needsUpdate=true;
+    s.translate(Math.cos(a)*0.018,h,Math.sin(a)*0.018);
+    gs.push(s);
+  }
+  // stamens — tiny elongated forms radiating from center
+  for(let i=0;i<12;i++){
+    const a=(i/12)*Math.PI*2;
+    const stamen=new THREE.CylinderGeometry(0.001,0.001,0.012,4,1);
+    stamen.translate(Math.cos(a)*0.008,0.015,Math.sin(a)*0.008);
+    stamen.rotateZ((Math.random()-0.5)*0.3);
+    gs.push(stamen);
   }
   return mergeGeometries(gs,false);
 }
 const panicleGeom=mkPanicle();
-const flowerMat2=new THREE.MeshStandardMaterial({color:0xFFF5E0,roughness:0.6,emissive:0x332200,emissiveIntensity:0.08});
+const flowerMat2=new THREE.MeshStandardMaterial({
+  color:0xFFF8E8,roughness:0.55,
+  emissive:0x443300,emissiveIntensity:0.06
+});
 const flowerCount=flowerD.length;
 const flowerInst=new THREE.InstancedMesh(panicleGeom,flowerMat2,flowerCount);
 const flowerBases=[];
@@ -438,19 +593,38 @@ flowerInst.instanceMatrix.needsUpdate=true;
 scene.add(flowerInst);
 prog(78);
 
-/* ===================== FRUITS ===================== */
+/* ==================== FRUIT GEOMETRY — with persistent calyx star ==================== */
+// Loquat fruit: pyriform (pear-shaped), persistent calyx "star crown" at base
 function mkFruit(){
   const g=new THREE.SphereGeometry(0.03,18,18);const p=g.attributes.position;
   for(let i=0;i<p.count;i++){
-    let x=p.getX(i),y=p.getY(i),z=p.getZ(i);y*=1.3;
-    if(y>0){const sq=1-y*3.2;x*=Math.max(0.55,sq);z*=Math.max(0.55,sq);}
-    if(y<-0.005){const bl=1+Math.sin((-y/0.04)*Math.PI*0.5)*0.14;x*=bl;z*=bl;}
+    let x=p.getX(i),y=p.getY(i),z=p.getZ(i);
+    // pyriform shape: elongated, narrower at stem end
+    y*=1.3;
+    if(y>0.01){const sq=1-y*3.0;x*=Math.max(0.5,sq);z*=Math.max(0.5,sq);}
+    if(y<-0.01){const bl=1+Math.sin((-y/0.04)*Math.PI*0.5)*0.12;x*=bl;z*=bl;}
     p.setXYZ(i,x,y,z);
   }
-  p.needsUpdate=true;g.computeVertexNormals();return g;
+  p.needsUpdate=true;g.computeVertexNormals();
+
+  // calyx star crown — 5 small triangular sepals at the base
+  const calyxGs=[g];
+  for(let i=0;i<5;i++){
+    const angle=(i/5)*Math.PI*2;
+    const sepal=new THREE.ConeGeometry(0.006,0.018,4,1);
+    sepal.translate(Math.cos(angle)*0.015,-0.04,Math.sin(angle)*0.015);
+    sepal.rotateX(0.3);sepal.rotateY(angle);
+    calyxGs.push(sepal);
+  }
+  return mergeGeometries(calyxGs,false);
 }
 const fruitGeom=mkFruit();
-const fruitMat2=new THREE.MeshPhysicalMaterial({color:0xD4941A,roughness:0.78,clearcoat:0.04,clearcoatRoughness:0.9,sheen:1,sheenRoughness:0.75,sheenColor:new THREE.Color(0xF5DEB3)});
+const fruitMat2=new THREE.MeshPhysicalMaterial({
+  color:0xD4941A,roughness:0.75,
+  clearcoat:0.06,clearcoatRoughness:0.85,
+  sheen:1,sheenRoughness:0.7,
+  sheenColor:new THREE.Color(0xF5DEB3)
+});
 const fruitCount=fruitD.length;
 const fruitInst=new THREE.InstancedMesh(fruitGeom,fruitMat2,fruitCount);
 const fruitBases=[];
@@ -458,13 +632,15 @@ for(let i=0;i<fruitCount;i++){
   dum.position.copy(fruitD[i]);dum.rotation.set(Math.random()*0.5,Math.random()*6.28,Math.random()*0.5);
   const s=0.65+Math.random()*0.5;dum.scale.set(0.001,0.001,0.001);dum.updateMatrix();
   fruitInst.setMatrixAt(i,dum.matrix);
-  fruitInst.setColorAt(i,new THREE.Color().setHSL(0.1+Math.random()*0.06,0.6+Math.random()*0.35,0.35+Math.random()*0.2));
+  // color range: green → yellow → orange as they mature
+  fruitInst.setColorAt(i,new THREE.Color().setHSL(0.1+Math.random()*0.06,0.55+Math.random()*0.35,0.35+Math.random()*0.2));
   fruitBases.push({p:fruitD[i].clone(),q:dum.quaternion.clone(),s:s});
 }
 fruitInst.instanceMatrix.needsUpdate=true;
 if(fruitInst.instanceColor)fruitInst.instanceColor.needsUpdate=true;
 scene.add(fruitInst);
 
+// fruit stems
 const stemG=new THREE.CylinderGeometry(0.002,0.003,0.05,6,1);
 const stemM=new THREE.MeshStandardMaterial({color:0x4a3520,roughness:0.9});
 const stems=[];
@@ -474,25 +650,40 @@ for(let i=0;i<fruitCount;i++){
 }
 prog(84);
 
-/* ===================== GROUND ===================== */
-scene.add(Object.assign(new THREE.Mesh(new THREE.CircleGeometry(7,64),new THREE.MeshStandardMaterial({color:0x1a1008,roughness:1,transparent:true,opacity:0.35})),{rotation:{x:-Math.PI/2},position:{y:-0.06}}));
+/* ==================== GROUND PLANE ==================== */
+const groundMat=new THREE.MeshStandardMaterial({
+  color:0x3a3020,roughness:1,transparent:true,opacity:0.5
+});
+const ground=new THREE.Mesh(new THREE.CircleGeometry(8,64),groundMat);
+ground.rotation.x=-Math.PI/2;ground.position.y=-0.06;
+scene.add(ground);
 
-/* ===================== FIREFLIES ===================== */
-const ffN=100,ffP=new Float32Array(ffN*3),ffS=[];
-for(let i=0;i<ffN;i++){ffP[i*3]=(Math.random()-0.5)*10;ffP[i*3+1]=Math.random()*7+0.5;ffP[i*3+2]=(Math.random()-0.5)*10;ffS.push({x:(Math.random()-0.5)*0.004,y:(Math.random()-0.5)*0.002,z:(Math.random()-0.5)*0.004,ph:Math.random()*6.28});}
+/* ==================== FIREFLIES ==================== */
+const ffN=80,ffP=new Float32Array(ffN*3),ffS=[];
+for(let i=0;i<ffN;i++){
+  ffP[i*3]=(Math.random()-0.5)*10;ffP[i*3+1]=Math.random()*7+0.5;ffP[i*3+2]=(Math.random()-0.5)*10;
+  ffS.push({x:(Math.random()-0.5)*0.003,y:(Math.random()-0.5)*0.0015,z:(Math.random()-0.5)*0.003,ph:Math.random()*6.28});
+}
 const ffGeo=new THREE.BufferGeometry();ffGeo.setAttribute('position',new THREE.BufferAttribute(ffP,3));
-const ffMat=new THREE.PointsMaterial({color:0xc9a060,size:0.06,transparent:true,opacity:0,blending:THREE.AdditiveBlending,sizeAttenuation:true});
+const ffMat=new THREE.PointsMaterial({color:0xd0b060,size:0.05,transparent:true,opacity:0,blending:THREE.AdditiveBlending,sizeAttenuation:true});
 scene.add(new THREE.Points(ffGeo,ffMat));
 
-/* ===================== BURST PARTICLES ===================== */
+/* ==================== BURST PARTICLES ==================== */
 const bN=40,bP=new Float32Array(bN*3),bV=[],bL=new Float32Array(bN);
 for(let i=0;i<bN;i++){bP[i*3+1]=-100;bV.push(V3(0,0,0));bL[i]=0;}
 const bGeo=new THREE.BufferGeometry();bGeo.setAttribute('position',new THREE.BufferAttribute(bP,3));
-const bMat=new THREE.PointsMaterial({color:0xe8c050,size:0.06,transparent:true,opacity:0,blending:THREE.AdditiveBlending,sizeAttenuation:true});
+const bMat=new THREE.PointsMaterial({color:0xe8c050,size:0.05,transparent:true,opacity:0,blending:THREE.AdditiveBlending,sizeAttenuation:true});
 scene.add(new THREE.Points(bGeo,bMat));
-function burst(pt){for(let i=0;i<bN;i++){bP[i*3]=pt.x;bP[i*3+1]=pt.y;bP[i*3+2]=pt.z;bV[i].set((Math.random()-0.5)*0.1,(Math.random()-0.2)*0.07,(Math.random()-0.5)*0.1);bL[i]=1;}bGeo.attributes.position.needsUpdate=true;}
+function burst(pt){
+  for(let i=0;i<bN;i++){
+    bP[i*3]=pt.x;bP[i*3+1]=pt.y;bP[i*3+2]=pt.z;
+    bV[i].set((Math.random()-0.5)*0.08,(Math.random()-0.2)*0.06,(Math.random()-0.5)*0.08);
+    bL[i]=1;
+  }
+  bGeo.attributes.position.needsUpdate=true;
+}
 
-/* ===================== FALLING LEAVES ===================== */
+/* ==================== FALLING LEAVES ==================== */
 const fallingLeaves=[];
 const flMats=[
   new THREE.MeshStandardMaterial({color:0x4a6a20,roughness:0.6,side:THREE.DoubleSide,transparent:true,opacity:0.85}),
@@ -507,52 +698,176 @@ for(let i=0;i<10;i++){
 }
 prog(90);
 
-/* ===================== GROWTH STATE ===================== */
+/* ==================== GROWTH STATE ==================== */
+// Growth propagates radially from each touch point at GSPEED units/second.
+// getAge(pos, time) returns how "old" a point is — negative means not yet reached.
 const GSPEED=0.6;
 const growthSources=[];
 let touchPt=V3(0,-100,0),touchStr=0;
+
 const touchLight=new THREE.PointLight(0xd4a050,0,4);scene.add(touchLight);
-const touchGlow=new THREE.Mesh(new THREE.SphereGeometry(0.1,12,12),new THREE.MeshBasicMaterial({color:0xd4a050,transparent:true,opacity:0,blending:THREE.AdditiveBlending}));
+const touchGlow=new THREE.Mesh(
+  new THREE.SphereGeometry(0.1,12,12),
+  new THREE.MeshBasicMaterial({color:0xd4a050,transparent:true,opacity:0,blending:THREE.AdditiveBlending})
+);
 scene.add(touchGlow);
 
 function getAge(pos,time){
   let m=-999;
-  for(const src of growthSources){const d=pos.distanceTo(src.p);const r=(time-src.t)*GSPEED;m=Math.max(m,r-d);}
+  for(const src of growthSources){
+    const d=pos.distanceTo(src.p);
+    const r=(time-src.t)*GSPEED;
+    m=Math.max(m,r-d);
+  }
   return m;
 }
 
-/* ===================== INTERACTION ===================== */
+/* ==================== NAMED GROWTH FUNCTIONS ==================== */
+// initiateGrowth: called on touch — registers a new growth source
+function initiateGrowth(touchPoint){
+  if(growthSources.length>=MAX_SRC) growthSources.shift();
+  growthSources.push({p:touchPoint.clone(),t:clock.getElapsedTime()});
+  burst(touchPoint);
+}
+
+// growShoots: updates bark shader growth uniforms (visual greening of bark)
+function growShoots(t){
+  for(let i=0;i<MAX_SRC;i++){
+    if(i<growthSources.length){
+      gSrcArr[i].copy(growthSources[i].p);
+      gRadArr[i]=(t-growthSources[i].t)*GSPEED;
+    } else {
+      gSrcArr[i].set(0,-100,0);gRadArr[i]=0;
+    }
+  }
+}
+
+// unfurlLeaves: animates leaf scale, unfurl rotation, and wind sway
+function unfurlLeaves(t){
+  const touchR=2.5;
+  for(let i=0;i<leafCount;i++){
+    const lb=leafBases[i];
+    const age=getAge(lb.p,t);
+    let sc;
+    if(age<0) sc=0.001;
+    else if(age<1.2) sc=lb.s*(age/1.2);
+    else sc=lb.s;
+
+    let sway=age>1.0?1.0:0;
+    if(touchStr>0.01&&age>0.3){
+      const d=lb.p.distanceTo(touchPt);
+      if(d<touchR) sway+=((touchR-d)/touchR)*touchStr*3;
+    }
+    const ang=(Math.sin(t*0.7+lb.ph)*0.025+Math.sin(t*1.2+lb.ph*2.3)*0.012)*sway;
+    swayQ.setFromAxisAngle(swayAxis,ang);
+    finalQ.copy(lb.q).multiply(swayQ);
+
+    // unfurl: young leaves start curled and open as they grow
+    if(age>0&&age<1.2){
+      const unfurl=(1-age/1.2)*1.2;
+      const uQ=new THREE.Quaternion().setFromAxisAngle(unfurlAxis,unfurl);
+      finalQ.multiply(uQ);
+    }
+    scV.set(sc,sc,sc);tMat.compose(lb.p,finalQ,scV);
+    leafInst.setMatrixAt(i,tMat);
+  }
+  leafInst.instanceMatrix.needsUpdate=true;
+}
+
+// bloomFlowers: animates flower panicles — appear, peak, then fade
+function bloomFlowers(t){
+  for(let i=0;i<flowerCount;i++){
+    const fb=flowerBases[i];
+    const age=getAge(fb.p,t);
+    let sc;
+    if(age<1.5) sc=0.001;
+    else if(age<2.5) sc=(age-1.5);
+    else if(age<4.0) sc=1.0;
+    else if(age<5.0) sc=Math.max(0.001,1.0-(age-4.0));
+    else sc=0.001;
+    scV.set(sc,sc,sc);tMat.compose(fb.p,fb.q,scV);
+    flowerInst.setMatrixAt(i,tMat);
+  }
+  flowerInst.instanceMatrix.needsUpdate=true;
+}
+
+// developFruits: animates fruit growth — appear after flowers, grow and ripen
+function developFruits(t){
+  for(let i=0;i<fruitCount;i++){
+    const fr=fruitBases[i];
+    const age=getAge(fr.p,t);
+    let sc;
+    if(age<3.0) sc=0.001;
+    else if(age<4.5) sc=fr.s*((age-3.0)/1.5);
+    else sc=fr.s;
+
+    // color transition: green → yellow → orange as fruit ripens
+    if(age>=3.0){
+      const ripeT=Math.min(1,(age-3.0)/3.0);
+      const col=new THREE.Color();
+      if(ripeT<0.5){
+        col.setHSL(0.22-ripeT*0.14, 0.5+ripeT*0.3, 0.25+ripeT*0.15);
+      } else {
+        col.setHSL(0.12-(ripeT-0.5)*0.06, 0.6+ripeT*0.2, 0.32+ripeT*0.18);
+      }
+      fruitInst.setColorAt(i,col);
+    }
+
+    // gentle sway
+    scV.set(sc,sc*(0.9+Math.sin(t+i)*0.02),sc);
+    tMat.compose(fr.p,fr.q,scV);
+    fruitInst.setMatrixAt(i,tMat);
+    stems[i].visible=sc>0.01;
+    if(sc>0.01) stems[i].scale.set(sc,sc,sc);
+  }
+  fruitInst.instanceMatrix.needsUpdate=true;
+  if(fruitInst.instanceColor) fruitInst.instanceColor.needsUpdate=true;
+}
+
+/* ==================== INTERACTION ==================== */
 const raycaster=new THREE.Raycaster();
 const pointer=new THREE.Vector2(-10,-10);
 const rayTargets=branchMesh?[branchMesh]:[];
 
 function onMove(e){
-  pointer.x=(e.clientX/innerWidth)*2-1;pointer.y=-(e.clientY/innerHeight)*2+1;
+  const cx=e.touches?e.touches[0].clientX:e.clientX;
+  const cy=e.touches?e.touches[0].clientY:e.clientY;
+  pointer.x=(cx/innerWidth)*2-1;pointer.y=-(cy/innerHeight)*2+1;
   raycaster.setFromCamera(pointer,camera);
   const h=raycaster.intersectObjects(rayTargets,false);
   if(h.length){touchPt.copy(h[0].point);touchStr=Math.max(touchStr,0.7);renderer.domElement.style.cursor='pointer';}
   else renderer.domElement.style.cursor='grab';
 }
 function onDown(e){
-  pointer.x=(e.clientX/innerWidth)*2-1;pointer.y=-(e.clientY/innerHeight)*2+1;
+  const cx=e.touches?e.touches[0].clientX:e.clientX;
+  const cy=e.touches?e.touches[0].clientY:e.clientY;
+  pointer.x=(cx/innerWidth)*2-1;pointer.y=-(cy/innerHeight)*2+1;
   raycaster.setFromCamera(pointer,camera);
   const h=raycaster.intersectObjects(rayTargets,false);
   if(h.length){
     const pt=h[0].point;touchPt.copy(pt);touchStr=3;
-    if(growthSources.length>=MAX_SRC)growthSources.shift();
-    growthSources.push({p:pt.clone(),t:clock.getElapsedTime()});
-    burst(pt);
-    for(let i=0;i<3;i++){const fl=fallingLeaves[Math.floor(Math.random()*fallingLeaves.length)];fl.mesh.position.copy(pt).add(V3((Math.random()-0.5)*0.3,Math.random()*0.2,(Math.random()-0.5)*0.3));fl.mesh.visible=true;}
+    initiateGrowth(pt);
+    // shake a few falling leaves loose on touch
+    for(let i=0;i<3;i++){
+      const fl=fallingLeaves[Math.floor(Math.random()*fallingLeaves.length)];
+      fl.mesh.position.copy(pt).add(V3((Math.random()-0.5)*0.3,Math.random()*0.2,(Math.random()-0.5)*0.3));
+      fl.mesh.visible=true;
+    }
   }
 }
 renderer.domElement.addEventListener('pointermove',onMove);
 renderer.domElement.addEventListener('pointerdown',onDown);
+renderer.domElement.addEventListener('touchmove',e=>{e.preventDefault();onMove(e);},{passive:false});
+renderer.domElement.addEventListener('touchstart',e=>{onDown(e);});
 prog(95);
 
-/* ===================== RESIZE ===================== */
-addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);composer.setSize(innerWidth,innerHeight);});
+/* ==================== RESIZE ==================== */
+addEventListener('resize',()=>{
+  camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth,innerHeight);composer.setSize(innerWidth,innerHeight);
+});
 
-/* ===================== ANIMATION ===================== */
+/* ==================== ANIMATION LOOP ==================== */
 const clock=new THREE.Clock();
 const swayAxis=V3(1,0.2,0.5).normalize();
 const swayQ=new THREE.Quaternion(),finalQ=new THREE.Quaternion();
@@ -565,100 +880,72 @@ function animate(){
   controls.update();
   skyMat.uniforms.uTime.value=t;
 
+  // decay touch glow
   touchStr*=0.965;if(touchStr<0.005)touchStr=0;
   barkMat.uniforms.uTP.value.copy(touchPt);
   barkMat.uniforms.uTS.value=touchStr;
 
-  // update growth uniforms for bark
-  for(let i=0;i<MAX_SRC;i++){
-    if(i<growthSources.length){
-      gSrcArr[i].copy(growthSources[i].p);
-      gRadArr[i]=(t-growthSources[i].t)*GSPEED;
-    } else {gSrcArr[i].set(0,-100,0);gRadArr[i]=0;}
-  }
+  // named growth functions
+  growShoots(t);
+  unfurlLeaves(t);
+  bloomFlowers(t);
+  developFruits(t);
 
-  touchLight.position.copy(touchPt);touchLight.intensity=touchStr*1.2;
-  touchGlow.position.copy(touchPt);touchGlow.material.opacity=touchStr*0.2;touchGlow.scale.setScalar(1+touchStr*0.4);
+  // touch feedback lights
+  touchLight.position.copy(touchPt);touchLight.intensity=touchStr*1.0;
+  touchGlow.position.copy(touchPt);touchGlow.material.opacity=touchStr*0.18;touchGlow.scale.setScalar(1+touchStr*0.3);
 
-  // life level
+  // overall life level — drives ambient effects
   let lifeLevel=0;
   for(const src of growthSources) lifeLevel+=Math.min(8,(t-src.t)*GSPEED);
   lifeLevel=Math.min(1,lifeLevel*0.03);
-  warmSpot.intensity=0.15+lifeLevel*0.55;
-  canopyGlow.intensity=lifeLevel*0.45;
-  ffMat.opacity=lifeLevel*0.4;
+  warmSpot.intensity=0.12+lifeLevel*0.5;
+  canopyGlow.intensity=lifeLevel*0.4;
+  ffMat.opacity=lifeLevel*0.35;
 
-  // LEAVES — growth-based animation
-  const touchR=2.5;
-  for(let i=0;i<leafCount;i++){
-    const lb=leafBases[i];
-    const age=getAge(lb.p,t);
-    let sc;
-    if(age<0){sc=0.001;}
-    else if(age<1.2){sc=lb.s*(age/1.2);}
-    else{sc=lb.s;}
-
-    let sway=age>1.0?1.0:0;
-    if(touchStr>0.01&&age>0.3){const d=lb.p.distanceTo(touchPt);if(d<touchR)sway+=((touchR-d)/touchR)*touchStr*3;}
-    const ang=(Math.sin(t*0.7+lb.ph)*0.025+Math.sin(t*1.2+lb.ph*2.3)*0.012)*sway;
-    swayQ.setFromAxisAngle(swayAxis,ang);
-    finalQ.copy(lb.q).multiply(swayQ);
-    if(age>0&&age<1.2){const unfurl=(1-age/1.2)*1.2;const uQ=new THREE.Quaternion().setFromAxisAngle(unfurlAxis,unfurl);finalQ.multiply(uQ);}
-    scV.set(sc,sc,sc);tMat.compose(lb.p,finalQ,scV);
-    leafInst.setMatrixAt(i,tMat);
-  }
-  leafInst.instanceMatrix.needsUpdate=true;
-
-  // FLOWERS
-  for(let i=0;i<flowerCount;i++){
-    const fb=flowerBases[i];const age=getAge(fb.p,t);
-    let sc;
-    if(age<1.5)sc=0.001;
-    else if(age<2.5)sc=(age-1.5);
-    else if(age<4.0)sc=1.0;
-    else if(age<5.0)sc=Math.max(0.001,1.0-(age-4.0));
-    else sc=0.001;
-    scV.set(sc,sc,sc);tMat.compose(fb.p,fb.q,scV);
-    flowerInst.setMatrixAt(i,tMat);
-  }
-  flowerInst.instanceMatrix.needsUpdate=true;
-
-  // FRUITS
-  for(let i=0;i<fruitCount;i++){
-    const fr=fruitBases[i];const age=getAge(fr.p,t);
-    let sc;
-    if(age<3.0)sc=0.001;
-    else if(age<4.5)sc=fr.s*((age-3.0)/1.5);
-    else sc=fr.s;
-    scV.set(sc,sc*(0.9+Math.sin(t+i)*0.02),sc);tMat.compose(fr.p,fr.q,scV);
-    fruitInst.setMatrixAt(i,tMat);
-    stems[i].visible=sc>0.01;
-    if(sc>0.01){stems[i].scale.set(sc,sc,sc);}
-  }
-  fruitInst.instanceMatrix.needsUpdate=true;
-
-  // FIREFLIES
+  // fireflies
   const fp=ffGeo.attributes.position;
-  for(let i=0;i<ffN;i++){const s=ffS[i];fp.setX(i,fp.getX(i)+s.x+Math.sin(t*0.4+s.ph)*0.0012);fp.setY(i,fp.getY(i)+s.y+Math.sin(t*0.25+s.ph*1.5)*0.0008);fp.setZ(i,fp.getZ(i)+s.z+Math.cos(t*0.35+s.ph*0.8)*0.0012);if(Math.abs(fp.getX(i))>7||fp.getY(i)>9||fp.getY(i)<0||Math.abs(fp.getZ(i))>7)fp.setXYZ(i,(Math.random()-0.5)*7,Math.random()*6+1,(Math.random()-0.5)*7);}
+  for(let i=0;i<ffN;i++){
+    const s=ffS[i];
+    fp.setX(i,fp.getX(i)+s.x+Math.sin(t*0.4+s.ph)*0.001);
+    fp.setY(i,fp.getY(i)+s.y+Math.sin(t*0.25+s.ph*1.5)*0.0007);
+    fp.setZ(i,fp.getZ(i)+s.z+Math.cos(t*0.35+s.ph*0.8)*0.001);
+    if(Math.abs(fp.getX(i))>7||fp.getY(i)>9||fp.getY(i)<0||Math.abs(fp.getZ(i))>7)
+      fp.setXYZ(i,(Math.random()-0.5)*7,Math.random()*6+1,(Math.random()-0.5)*7);
+  }
   fp.needsUpdate=true;
 
-  // FALLING LEAVES
-  fallingLeaves.forEach(fl=>{if(!fl.mesh.visible)return;fl.mesh.position.y-=fl.vy;fl.mesh.position.x+=Math.sin(t*fl.ss+fl.ph)*fl.sa*0.008;fl.mesh.position.z+=Math.cos(t*fl.ss*0.7+fl.ph)*fl.sa*0.006;fl.mesh.rotation.x+=fl.rs;fl.mesh.rotation.z+=fl.rs*0.6;if(fl.mesh.position.y<-0.3)fl.mesh.visible=false;});
+  // falling leaves
+  fallingLeaves.forEach(fl=>{
+    if(!fl.mesh.visible)return;
+    fl.mesh.position.y-=fl.vy;
+    fl.mesh.position.x+=Math.sin(t*fl.ss+fl.ph)*fl.sa*0.008;
+    fl.mesh.position.z+=Math.cos(t*fl.ss*0.7+fl.ph)*fl.sa*0.006;
+    fl.mesh.rotation.x+=fl.rs;fl.mesh.rotation.z+=fl.rs*0.6;
+    if(fl.mesh.position.y<-0.3) fl.mesh.visible=false;
+  });
 
-  // BURST
+  // burst particles
   let alive=false;
-  for(let i=0;i<bN;i++){if(bL[i]>0){alive=true;bL[i]-=0.018;bV[i].y-=0.0008;bP[i*3]+=bV[i].x;bP[i*3+1]+=bV[i].y;bP[i*3+2]+=bV[i].z;if(bL[i]<=0)bP[i*3+1]=-100;}}
+  for(let i=0;i<bN;i++){
+    if(bL[i]>0){
+      alive=true;bL[i]-=0.018;bV[i].y-=0.0008;
+      bP[i*3]+=bV[i].x;bP[i*3+1]+=bV[i].y;bP[i*3+2]+=bV[i].z;
+      if(bL[i]<=0) bP[i*3+1]=-100;
+    }
+  }
   if(alive){bGeo.attributes.position.needsUpdate=true;bMat.opacity=Math.max(0,...bL)*0.9;}
-
-  // STAR TWINKLE
-  scene.children.forEach(c=>{if(c.isSprite&&c.userData.twinklePhase!==undefined){c.material.opacity=0.4+0.5*Math.sin(t*c.userData.twinkleSpeed+c.userData.twinklePhase)*0.5+0.25;}});
 
   composer.render();
 }
 
-/* ===================== START ===================== */
+/* ==================== START ==================== */
 prog(100);
-setTimeout(()=>{document.getElementById('loading').classList.add('fade-out');document.getElementById('overlay').classList.add('visible');animate();},1000);
+setTimeout(()=>{
+  document.getElementById('loading').classList.add('fade-out');
+  document.getElementById('overlay').classList.add('visible');
+  animate();
+},1000);
 </script>
 </body>
 </html>
