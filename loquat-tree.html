@@ -1,0 +1,784 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>庭有枇杷树 — 项脊轩志</title>
+<style>
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+html,body{width:100%;height:100%;overflow:hidden;background:#000;font-family:"楷体","KaiTi","STKaiti","SimSun",serif}
+canvas{display:block;width:100%;height:100%}
+
+#loading{position:fixed;inset:0;background:#000;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:1000;transition:opacity 2s ease,visibility 2s ease}
+#loading.fade-out{opacity:0;visibility:hidden;pointer-events:none}
+.loading-title{font-size:clamp(2rem,6vw,4rem);color:#c9a96e;letter-spacing:0.6em;margin-bottom:1.5rem;text-shadow:0 0 40px rgba(201,169,110,0.3);animation:breathe 3s ease-in-out infinite}
+.loading-quote{font-size:clamp(0.9rem,2.5vw,1.4rem);color:#7a6650;letter-spacing:0.25em;line-height:2.2;text-align:center;max-width:600px;padding:0 2rem}
+.loading-source{font-size:clamp(0.7rem,1.5vw,0.9rem);color:#5a4a3a;letter-spacing:0.3em;margin-top:2rem}
+.loading-bar{width:200px;height:2px;background:#1a1a1a;margin-top:3rem;border-radius:1px;overflow:hidden}
+.loading-fill{width:0%;height:100%;background:linear-gradient(90deg,#c9a96e,#8a6e40);transition:width 0.3s ease;border-radius:1px}
+@keyframes breathe{0%,100%{opacity:0.8;transform:scale(1)}50%{opacity:1;transform:scale(1.02)}}
+
+#overlay{position:fixed;inset:0;pointer-events:none;z-index:10;opacity:0;transition:opacity 2s ease 1s}
+#overlay.visible{opacity:1}
+.top-title{position:absolute;top:3rem;left:50%;transform:translateX(-50%);text-align:center}
+.top-title h1{font-size:clamp(1.2rem,3vw,1.8rem);color:#c9a96e;letter-spacing:0.5em;font-weight:normal;text-shadow:0 0 30px rgba(201,169,110,0.25)}
+.top-title .subtitle{font-size:clamp(0.6rem,1.5vw,0.8rem);color:#6a5a4a;letter-spacing:0.4em;margin-top:0.5rem}
+.bottom-quote{position:absolute;bottom:3rem;right:3rem;text-align:right;max-width:400px}
+.bottom-quote p{font-size:clamp(0.8rem,1.8vw,1.1rem);color:#8a7a60;letter-spacing:0.15em;line-height:2;text-shadow:0 0 20px rgba(0,0,0,0.8)}
+.bottom-quote .source{font-size:clamp(0.6rem,1.2vw,0.75rem);color:#5a4a3a;margin-top:0.8rem;letter-spacing:0.3em}
+.hint{position:absolute;bottom:2rem;left:3rem;font-size:0.7rem;color:#3a3a3a;letter-spacing:0.15em;transition:opacity 3s ease 4s}
+
+#vignette{position:fixed;inset:0;pointer-events:none;z-index:5;background:radial-gradient(ellipse at center,transparent 40%,rgba(0,0,0,0.6) 100%)}
+</style>
+</head>
+<body>
+
+<div id="loading">
+  <div class="loading-title">庭有枇杷树</div>
+  <div class="loading-quote">吾妻死之年所手植也<br>今已亭亭如盖矣</div>
+  <div class="loading-source">— 归有光 ·《项脊轩志》</div>
+  <div class="loading-bar"><div class="loading-fill" id="loading-fill"></div></div>
+</div>
+
+<div id="overlay">
+  <div class="top-title">
+    <h1>项 脊 轩 志</h1>
+    <div class="subtitle">归 有 光</div>
+  </div>
+  <div class="bottom-quote">
+    <p>庭有枇杷树，<br>吾妻死之年所手植也，<br>今已亭亭如盖矣。</p>
+    <div class="source">— 项脊轩志</div>
+  </div>
+  <div class="hint">拖动旋转 · 滚轮缩放</div>
+</div>
+
+<div id="vignette"></div>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
+
+const loadingFill = document.getElementById('loading-fill');
+function setProgress(p) { loadingFill.style.width = p + '%'; }
+
+/* ============================================================
+   SCENE SETUP
+   ============================================================ */
+const scene = new THREE.Scene();
+scene.fog = new THREE.FogExp2(0x000000, 0.015);
+
+const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 500);
+camera.position.set(6, 4, 8);
+camera.lookAt(0, 3, 0);
+
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.1;
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+document.body.prepend(renderer.domElement);
+
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.dampingFactor = 0.04;
+controls.autoRotate = true;
+controls.autoRotateSpeed = 0.3;
+controls.minDistance = 3;
+controls.maxDistance = 25;
+controls.target.set(0, 3, 0);
+controls.maxPolarAngle = Math.PI * 0.85;
+controls.update();
+
+const composer = new EffectComposer(renderer);
+composer.addPass(new RenderPass(scene, camera));
+const bloomPass = new UnrealBloomPass(
+  new THREE.Vector2(window.innerWidth, window.innerHeight), 0.6, 0.8, 0.35
+);
+composer.addPass(bloomPass);
+
+setProgress(10);
+
+/* ============================================================
+   LIGHTING
+   ============================================================ */
+const ambientLight = new THREE.AmbientLight(0x1a1a2e, 0.6);
+scene.add(ambientLight);
+
+const moonLight = new THREE.DirectionalLight(0xc9b896, 1.2);
+moonLight.position.set(-5, 12, 8);
+moonLight.castShadow = false;
+scene.add(moonLight);
+
+const fillLight = new THREE.DirectionalLight(0x4a6080, 0.3);
+fillLight.position.set(5, 2, -5);
+scene.add(fillLight);
+
+const rimLight = new THREE.DirectionalLight(0x8090a0, 0.4);
+rimLight.position.set(0, 5, -10);
+scene.add(rimLight);
+
+const warmSpot = new THREE.PointLight(0xc9a060, 0.8, 15);
+warmSpot.position.set(1, 1, 2);
+scene.add(warmSpot);
+
+const canopyGlow = new THREE.PointLight(0x6a8a5a, 0.5, 10);
+canopyGlow.position.set(0, 5, 0);
+scene.add(canopyGlow);
+
+setProgress(15);
+
+/* ============================================================
+   WORMHOLE BACKGROUND
+   ============================================================ */
+const wormholeVert = `
+varying vec3 vWorldPos;
+void main(){
+  vWorldPos = (modelMatrix * vec4(position,1.0)).xyz;
+  gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0);
+}`;
+
+const wormholeFrag = `
+uniform float uTime;
+varying vec3 vWorldPos;
+
+float hash(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453123);}
+float noise(vec2 p){
+  vec2 i=floor(p),f=fract(p);
+  f=f*f*(3.0-2.0*f);
+  return mix(mix(hash(i),hash(i+vec2(1,0)),f.x),
+             mix(hash(i+vec2(0,1)),hash(i+vec2(1,1)),f.x),f.y);
+}
+float fbm(vec2 p){
+  float v=0.0,a=0.5;
+  mat2 rot=mat2(0.8,0.6,-0.6,0.8);
+  for(int i=0;i<6;i++){v+=a*noise(p);p=rot*p*2.0;a*=0.5;}
+  return v;
+}
+
+void main(){
+  vec3 dir=normalize(vWorldPos);
+  float phi=atan(dir.z,dir.x);
+  float theta=acos(clamp(dir.y,-1.0,1.0));
+  float r=theta/3.14159;
+
+  float spiral=phi+r*6.0+sin(r*8.0+uTime*0.08)*0.8+uTime*0.03;
+  vec2 p=vec2(cos(spiral)*r,sin(spiral)*r);
+
+  float n1=fbm(p*4.0+uTime*0.015);
+  float n2=fbm(p*6.0-uTime*0.02+3.0);
+  float n3=fbm(p*8.0+vec2(uTime*0.01,0.0));
+
+  vec3 col=vec3(0.0);
+  float core=smoothstep(0.5,0.0,r);
+  col+=vec3(0.06,0.0,0.14)*n1*core*1.5;
+  col+=vec3(0.0,0.04,0.12)*n2*(1.0-r*0.6)*0.8;
+  col+=vec3(0.08,0.02,0.06)*n3*smoothstep(0.7,0.3,r)*0.6;
+  col+=vec3(0.03,0.0,0.08)*smoothstep(0.2,0.0,abs(r-0.35))*sin(spiral*3.0+uTime*0.1)*0.5;
+
+  float sf=hash(floor(vec2(phi*80.0,theta*80.0)));
+  if(sf>0.993){
+    float bright=pow(hash(floor(vec2(phi*80.0+7.0,theta*80.0+13.0))),4.0);
+    float twinkle=0.7+0.3*sin(uTime*2.0+sf*100.0);
+    col+=vec3(0.7,0.75,1.0)*bright*twinkle*1.5;
+  }
+  float sf2=hash(floor(vec2(phi*40.0+3.0,theta*40.0+5.0)));
+  if(sf2>0.99){
+    float bright=pow(hash(floor(vec2(phi*40.0+17.0,theta*40.0+23.0))),3.0);
+    col+=vec3(1.0,0.9,0.7)*bright*0.8;
+  }
+
+  col+=vec3(0.12,0.04,0.18)*smoothstep(0.15,0.0,r)*0.5;
+  gl_FragColor=vec4(col,1.0);
+}`;
+
+const wormholeMat = new THREE.ShaderMaterial({
+  vertexShader: wormholeVert,
+  fragmentShader: wormholeFrag,
+  uniforms: { uTime: { value: 0 } },
+  side: THREE.BackSide
+});
+
+const skySphere = new THREE.Mesh(new THREE.IcosahedronGeometry(200, 5), wormholeMat);
+scene.add(skySphere);
+
+setProgress(20);
+
+/* ============================================================
+   STAR PARTICLES
+   ============================================================ */
+function createStarField() {
+  const count = 3000;
+  const positions = new Float32Array(count * 3);
+  const sizes = new Float32Array(count);
+  const colors = new Float32Array(count * 3);
+  for (let i = 0; i < count; i++) {
+    const r = 50 + Math.random() * 100;
+    const theta = Math.random() * Math.PI * 2;
+    const phi = Math.acos(2 * Math.random() - 1);
+    positions[i*3]   = r * Math.sin(phi) * Math.cos(theta);
+    positions[i*3+1] = r * Math.sin(phi) * Math.sin(theta);
+    positions[i*3+2] = r * Math.cos(phi);
+    sizes[i] = 0.5 + Math.random() * 2.0;
+    const temp = Math.random();
+    if (temp > 0.7) { colors[i*3]=0.8; colors[i*3+1]=0.85; colors[i*3+2]=1.0; }
+    else if (temp > 0.4) { colors[i*3]=1.0; colors[i*3+1]=0.95; colors[i*3+2]=0.8; }
+    else { colors[i*3]=1.0; colors[i*3+1]=1.0; colors[i*3+2]=1.0; }
+  }
+  const geom = new THREE.BufferGeometry();
+  geom.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+  geom.setAttribute('size', new THREE.BufferAttribute(sizes, 1));
+  geom.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+  const mat = new THREE.PointsMaterial({ size: 0.3, vertexColors: true, transparent: true, opacity: 0.8, sizeAttenuation: true });
+  return new THREE.Points(geom, mat);
+}
+scene.add(createStarField());
+setProgress(25);
+
+/* ============================================================
+   FIREFLY PARTICLES
+   ============================================================ */
+const fireflyCount = 150;
+const fireflyPositions = new Float32Array(fireflyCount * 3);
+const fireflySpeeds = [];
+for (let i = 0; i < fireflyCount; i++) {
+  fireflyPositions[i*3]   = (Math.random() - 0.5) * 12;
+  fireflyPositions[i*3+1] = Math.random() * 8 + 0.5;
+  fireflyPositions[i*3+2] = (Math.random() - 0.5) * 12;
+  fireflySpeeds.push({
+    x: (Math.random() - 0.5) * 0.005,
+    y: (Math.random() - 0.5) * 0.003,
+    z: (Math.random() - 0.5) * 0.005,
+    phase: Math.random() * Math.PI * 2
+  });
+}
+const fireflyGeom = new THREE.BufferGeometry();
+fireflyGeom.setAttribute('position', new THREE.BufferAttribute(fireflyPositions, 3));
+const fireflyMat = new THREE.PointsMaterial({
+  color: 0xc9a060, size: 0.08, transparent: true, opacity: 0.6,
+  blending: THREE.AdditiveBlending, sizeAttenuation: true
+});
+const fireflyMesh = new THREE.Points(fireflyGeom, fireflyMat);
+scene.add(fireflyMesh);
+
+/* ============================================================
+   TREE GENERATION
+   ============================================================ */
+const branchGeometries = [];
+const leafData = [];
+const fruitData = [];
+const barkColor = new THREE.Color(0x5C4033);
+
+function generateBranch(start, dir, length, radius, depth, maxDepth) {
+  if (depth > maxDepth || radius < 0.004) return;
+
+  const numSegments = depth < 2 ? 5 : 3;
+  const points = [start.clone()];
+  const currentDir = dir.clone().normalize();
+
+  for (let i = 0; i < numSegments; i++) {
+    const wobble = depth < 1 ? 0.03 : 0.06 + depth * 0.02;
+    currentDir.x += (Math.random() - 0.5) * wobble;
+    currentDir.z += (Math.random() - 0.5) * wobble;
+    currentDir.y += (Math.random() - 0.3) * wobble * 0.5;
+    currentDir.normalize();
+    const segLen = length / numSegments;
+    const prev = points[points.length - 1];
+    points.push(prev.clone().add(currentDir.clone().multiplyScalar(segLen)));
+  }
+
+  for (let i = 0; i < points.length - 1; i++) {
+    const t0 = i / (points.length - 1);
+    const t1 = (i + 1) / (points.length - 1);
+    const r0 = radius * (1 - t0 * 0.4);
+    const r1 = radius * (1 - t1 * 0.4);
+    const segDir = new THREE.Vector3().subVectors(points[i + 1], points[i]);
+    const segLen = segDir.length();
+    if (segLen < 0.001) continue;
+    segDir.normalize();
+
+    const radialSegs = depth < 3 ? 8 : 6;
+    const geom = new THREE.CylinderGeometry(r1, r0, segLen, radialSegs, 1);
+
+    const quat = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), segDir);
+    const pos = points[i].clone().lerp(points[i + 1], 0.5);
+    const mat4 = new THREE.Matrix4().compose(pos, quat, new THREE.Vector3(1, 1, 1));
+    geom.applyMatrix4(mat4);
+
+    const posAttr = geom.attributes.position;
+    const colorAttr = new Float32Array(posAttr.count * 3);
+    for (let v = 0; v < posAttr.count; v++) {
+      const noiseVal = 0.85 + Math.random() * 0.3;
+      colorAttr[v * 3]     = barkColor.r * noiseVal;
+      colorAttr[v * 3 + 1] = barkColor.g * noiseVal;
+      colorAttr[v * 3 + 2] = barkColor.b * noiseVal;
+    }
+    geom.setAttribute('color', new THREE.BufferAttribute(colorAttr, 3));
+    branchGeometries.push(geom);
+  }
+
+  const end = points[points.length - 1];
+  const endDir = currentDir.clone();
+
+  if (depth >= 3) {
+    const leafCount = depth >= 5 ? 12 + Math.floor(Math.random() * 10) : 6 + Math.floor(Math.random() * 6);
+    for (let i = 0; i < leafCount; i++) {
+      const spread = 0.15 + depth * 0.05;
+      const offset = new THREE.Vector3(
+        (Math.random() - 0.5) * spread * 2,
+        (Math.random() - 0.5) * spread * 1.5,
+        (Math.random() - 0.5) * spread * 2
+      );
+      leafData.push({
+        position: end.clone().add(offset),
+        normal: offset.clone().normalize().add(new THREE.Vector3(0, 0.3, 0)).normalize()
+      });
+    }
+  }
+
+  if (depth >= 2 && depth <= 5 && Math.random() > 0.55) {
+    const clusterSize = 2 + Math.floor(Math.random() * 6);
+    for (let i = 0; i < clusterSize; i++) {
+      fruitData.push(end.clone().add(new THREE.Vector3(
+        (Math.random() - 0.5) * 0.2,
+        -Math.random() * 0.2 - 0.03,
+        (Math.random() - 0.5) * 0.2
+      )));
+    }
+  }
+
+  if (depth < maxDepth) {
+    const baseChildren = depth < 1 ? 5 : depth < 2 ? 4 : depth < 4 ? 3 : 2;
+    const numChildren = baseChildren + (Math.random() > 0.5 ? 1 : 0);
+
+    for (let i = 0; i < numChildren; i++) {
+      const up = endDir.clone();
+      let perp = new THREE.Vector3(1, 0, 0);
+      if (Math.abs(up.dot(perp)) > 0.9) perp.set(0, 0, 1);
+      const right = new THREE.Vector3().crossVectors(up, perp).normalize();
+      const forward = new THREE.Vector3().crossVectors(right, up).normalize();
+
+      const spreadBase = depth < 1 ? 0.5 : depth < 3 ? 0.4 : 0.35;
+      const spreadAngle = spreadBase + Math.random() * 0.35;
+      const azimuth = (i / numChildren) * Math.PI * 2 + (Math.random() - 0.5) * 1.2;
+
+      const sinS = Math.sin(spreadAngle);
+      const cosS = Math.cos(spreadAngle);
+      const childDir = new THREE.Vector3()
+        .addScaledVector(up, cosS)
+        .addScaledVector(right, sinS * Math.cos(azimuth))
+        .addScaledVector(forward, sinS * Math.sin(azimuth));
+
+      childDir.y += 0.12 * Math.max(0, 1 - depth * 0.18);
+      childDir.normalize();
+
+      const childLength = length * (0.55 + Math.random() * 0.2);
+      const childRadius = radius * (0.5 + Math.random() * 0.18);
+      generateBranch(end, childDir, childLength, childRadius, depth + 1, maxDepth);
+    }
+  }
+}
+
+setProgress(30);
+
+generateBranch(
+  new THREE.Vector3(0, 0, 0),
+  new THREE.Vector3(0.02, 1, 0.01),
+  2.8, 0.28, 0, 6
+);
+
+setProgress(50);
+
+/* ============================================================
+   MERGE BRANCHES
+   ============================================================ */
+const barkMaterial = new THREE.MeshStandardMaterial({
+  vertexColors: true, roughness: 0.92, metalness: 0.03
+});
+
+if (branchGeometries.length > 0) {
+  const mergedBranches = mergeGeometries(branchGeometries, false);
+  if (mergedBranches) {
+    const branchMesh = new THREE.Mesh(mergedBranches, barkMaterial);
+    scene.add(branchMesh);
+  }
+}
+
+setProgress(60);
+
+/* ============================================================
+   LEAF GEOMETRY & INSTANCING
+   ============================================================ */
+function createLeafGeometry() {
+  const shape = new THREE.Shape();
+  const w = 0.045, l = 0.13;
+  shape.moveTo(0, -l);
+  shape.bezierCurveTo(w * 0.4, -l * 0.65, w * 1.1, -l * 0.2, w, 0.02);
+  shape.bezierCurveTo(w * 0.9, l * 0.35, w * 0.5, l * 0.75, 0, l);
+  shape.bezierCurveTo(-w * 0.5, l * 0.75, -w * 0.9, l * 0.35, -w, 0.02);
+  shape.bezierCurveTo(-w * 1.1, -l * 0.2, -w * 0.4, -l * 0.65, 0, -l);
+  const geom = new THREE.ShapeGeometry(shape, 6);
+  const positions = geom.attributes.position;
+  for (let i = 0; i < positions.count; i++) {
+    const x = positions.getX(i);
+    const y = positions.getY(i);
+    const bend = Math.abs(x) * 2.0;
+    positions.setZ(i, -bend * 0.15 + Math.sin(y * 8) * 0.005);
+  }
+  positions.needsUpdate = true;
+  geom.computeVertexNormals();
+  return geom;
+}
+
+const leafGeom = createLeafGeometry();
+const leafMaterial = new THREE.MeshPhysicalMaterial({
+  color: 0x2d5a1e, roughness: 0.55, metalness: 0.02,
+  transmission: 0.08, thickness: 0.5, side: THREE.DoubleSide,
+  transparent: true, opacity: 0.92
+});
+
+const leafCount = leafData.length;
+const leafMesh = new THREE.InstancedMesh(leafGeom, leafMaterial, leafCount);
+const dummy = new THREE.Object3D();
+
+for (let i = 0; i < leafCount; i++) {
+  const ld = leafData[i];
+  dummy.position.copy(ld.position);
+  dummy.lookAt(ld.position.clone().add(ld.normal));
+  dummy.rotateZ(Math.random() * Math.PI * 2);
+  dummy.rotateX((Math.random() - 0.5) * 0.6);
+  const s = 0.7 + Math.random() * 0.6;
+  dummy.scale.set(s, s, s);
+  dummy.updateMatrix();
+  leafMesh.setMatrixAt(i, dummy.matrix);
+
+  const c = new THREE.Color();
+  const hue = 0.25 + (Math.random() - 0.5) * 0.08;
+  const sat = 0.45 + Math.random() * 0.35;
+  const lig = 0.12 + Math.random() * 0.16;
+  c.setHSL(hue, sat, lig);
+  leafMesh.setColorAt(i, c);
+}
+leafMesh.instanceMatrix.needsUpdate = true;
+if (leafMesh.instanceColor) leafMesh.instanceColor.needsUpdate = true;
+scene.add(leafMesh);
+
+setProgress(75);
+
+/* ============================================================
+   LOQUAT FRUIT GEOMETRY & INSTANCING
+   ============================================================ */
+function createFruitGeometry() {
+  const geom = new THREE.SphereGeometry(0.028, 14, 14);
+  const pos = geom.attributes.position;
+  for (let i = 0; i < pos.count; i++) {
+    let x = pos.getX(i), y = pos.getY(i), z = pos.getZ(i);
+    y *= 1.25;
+    if (y > 0) {
+      const squeeze = 1 - y * 3.5;
+      x *= Math.max(0.6, squeeze);
+      z *= Math.max(0.6, squeeze);
+    }
+    if (y < -0.01) {
+      const bulge = 1 + Math.sin((-y / 0.035) * Math.PI * 0.5) * 0.12;
+      x *= bulge;
+      z *= bulge;
+    }
+    const noiseAmt = 0.0008;
+    x += (Math.random() - 0.5) * noiseAmt;
+    y += (Math.random() - 0.5) * noiseAmt;
+    z += (Math.random() - 0.5) * noiseAmt;
+    pos.setXYZ(i, x, y, z);
+  }
+  pos.needsUpdate = true;
+  geom.computeVertexNormals();
+  return geom;
+}
+
+const fruitFuzzVert = `
+varying vec3 vNormal;
+varying vec3 vViewDir;
+varying vec2 vUv;
+varying float vFuzz;
+void main(){
+  vUv = uv;
+  vNormal = normalize(normalMatrix * normal);
+  vec4 mvPos = modelViewMatrix * vec4(position, 1.0);
+  vViewDir = normalize(-mvPos.xyz);
+  vFuzz = 0.5 + 0.5 * sin(position.x * 200.0 + position.y * 150.0 + position.z * 180.0);
+  gl_Position = projectionMatrix * mvPos;
+}`;
+
+const fruitFuzzFrag = `
+uniform vec3 uBaseColor;
+uniform vec3 uFuzzColor;
+varying vec3 vNormal;
+varying vec3 vViewDir;
+varying vec2 vUv;
+varying float vFuzz;
+void main(){
+  float facing = dot(vNormal, vViewDir);
+  float rim = 1.0 - max(0.0, facing);
+  rim = pow(rim, 1.5);
+
+  vec3 color = mix(uBaseColor, uFuzzColor, rim * 0.7 + vFuzz * 0.15);
+
+  float diffuse = max(0.0, dot(vNormal, normalize(vec3(-0.5, 1.0, 0.8))));
+  color *= 0.35 + diffuse * 0.65;
+  color += vec3(1.0, 0.95, 0.8) * pow(max(0.0, dot(reflect(-normalize(vec3(-0.5,1.0,0.8)), vNormal), vViewDir)), 20.0) * 0.15;
+  color += uFuzzColor * rim * 0.4;
+
+  gl_FragColor = vec4(color, 1.0);
+}`;
+
+const fruitGeom = createFruitGeometry();
+const fruitShaderMat = new THREE.ShaderMaterial({
+  vertexShader: fruitFuzzVert,
+  fragmentShader: fruitFuzzFrag,
+  uniforms: {
+    uBaseColor: { value: new THREE.Color(0xD4941A) },
+    uFuzzColor: { value: new THREE.Color(0xF5DEB3) }
+  }
+});
+
+const fruitMeshMat = new THREE.MeshPhysicalMaterial({
+  color: 0xD4941A, roughness: 0.78, metalness: 0.0,
+  clearcoat: 0.05, clearcoatRoughness: 0.9, sheen: 1.0,
+  sheenRoughness: 0.8, sheenColor: new THREE.Color(0xF5DEB3)
+});
+
+const fruitCount = fruitData.length;
+const fruitInstanceMesh = new THREE.InstancedMesh(fruitGeom, fruitMeshMat, fruitCount);
+
+for (let i = 0; i < fruitCount; i++) {
+  dummy.position.copy(fruitData[i]);
+  dummy.rotation.set(Math.random() * 0.5, Math.random() * Math.PI * 2, Math.random() * 0.5);
+  const s = 0.7 + Math.random() * 0.5;
+  dummy.scale.set(s, s * (0.9 + Math.random() * 0.2), s);
+  dummy.updateMatrix();
+  fruitInstanceMesh.setMatrixAt(i, dummy.matrix);
+
+  const c = new THREE.Color();
+  c.setHSL(0.1 + Math.random() * 0.06, 0.65 + Math.random() * 0.3, 0.38 + Math.random() * 0.18);
+  fruitInstanceMesh.setColorAt(i, c);
+}
+fruitInstanceMesh.instanceMatrix.needsUpdate = true;
+if (fruitInstanceMesh.instanceColor) fruitInstanceMesh.instanceColor.needsUpdate = true;
+scene.add(fruitInstanceMesh);
+
+/* fruit stems */
+const stemGeom = new THREE.CylinderGeometry(0.002, 0.003, 0.06, 4, 1);
+const stemMat = new THREE.MeshStandardMaterial({ color: 0x4a3520, roughness: 0.9 });
+for (let i = 0; i < fruitCount; i++) {
+  const stem = new THREE.Mesh(stemGeom, stemMat);
+  stem.position.copy(fruitData[i]).add(new THREE.Vector3(0, 0.04, 0));
+  stem.rotation.z = (Math.random() - 0.5) * 0.3;
+  scene.add(stem);
+}
+
+setProgress(85);
+
+/* ============================================================
+   GROUND ROOTS
+   ============================================================ */
+const groundGeom = new THREE.CircleGeometry(6, 64);
+const groundMat = new THREE.MeshStandardMaterial({
+  color: 0x1a1008, roughness: 1, metalness: 0, transparent: true, opacity: 0.4
+});
+const ground = new THREE.Mesh(groundGeom, groundMat);
+ground.rotation.x = -Math.PI / 2;
+ground.position.y = -0.05;
+scene.add(ground);
+
+for (let i = 0; i < 8; i++) {
+  const angle = (i / 8) * Math.PI * 2 + Math.random() * 0.4;
+  const rootLength = 0.8 + Math.random() * 1.2;
+  const rootRadius = 0.03 + Math.random() * 0.04;
+  const rootDir = new THREE.Vector3(Math.cos(angle), -0.15, Math.sin(angle)).normalize();
+  const rootGeoms = [];
+  let pos = new THREE.Vector3(
+    Math.cos(angle) * 0.2,
+    0.05,
+    Math.sin(angle) * 0.2
+  );
+  const segs = 4;
+  const rDir = rootDir.clone();
+  for (let s = 0; s < segs; s++) {
+    const t = s / segs;
+    const r0 = rootRadius * (1 - t * 0.6);
+    const r1 = rootRadius * (1 - (t + 1 / segs) * 0.6);
+    const segLen = rootLength / segs;
+    rDir.y -= 0.03;
+    rDir.normalize();
+    const nextPos = pos.clone().add(rDir.clone().multiplyScalar(segLen));
+    const d = new THREE.Vector3().subVectors(nextPos, pos);
+    const l = d.length();
+    d.normalize();
+    const g = new THREE.CylinderGeometry(r1, r0, l, 6, 1);
+    const q = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), d);
+    const m = new THREE.Matrix4().compose(pos.clone().lerp(nextPos, 0.5), q, new THREE.Vector3(1, 1, 1));
+    g.applyMatrix4(m);
+    const ca = new Float32Array(g.attributes.position.count * 3);
+    for (let v = 0; v < g.attributes.position.count; v++) {
+      const n = 0.8 + Math.random() * 0.4;
+      ca[v*3] = barkColor.r * n;
+      ca[v*3+1] = barkColor.g * n;
+      ca[v*3+2] = barkColor.b * n;
+    }
+    g.setAttribute('color', new THREE.BufferAttribute(ca, 3));
+    rootGeoms.push(g);
+    pos = nextPos;
+  }
+  if (rootGeoms.length) {
+    const merged = mergeGeometries(rootGeoms, false);
+    if (merged) scene.add(new THREE.Mesh(merged, barkMaterial));
+  }
+}
+
+setProgress(90);
+
+/* ============================================================
+   FALLING LEAVES
+   ============================================================ */
+const fallingLeaves = [];
+const fallingLeafGeom = createLeafGeometry();
+const fallingLeafMats = [
+  new THREE.MeshPhysicalMaterial({ color: 0x4a6a20, roughness: 0.6, side: THREE.DoubleSide, transparent: true, opacity: 0.85 }),
+  new THREE.MeshPhysicalMaterial({ color: 0x6a5a18, roughness: 0.6, side: THREE.DoubleSide, transparent: true, opacity: 0.8 }),
+  new THREE.MeshPhysicalMaterial({ color: 0x8a6a10, roughness: 0.6, side: THREE.DoubleSide, transparent: true, opacity: 0.75 }),
+];
+
+for (let i = 0; i < 15; i++) {
+  const mat = fallingLeafMats[Math.floor(Math.random() * fallingLeafMats.length)];
+  const mesh = new THREE.Mesh(fallingLeafGeom, mat);
+  const s = 0.6 + Math.random() * 0.5;
+  mesh.scale.set(s, s, s);
+  resetFallingLeaf(mesh);
+  scene.add(mesh);
+  fallingLeaves.push({
+    mesh,
+    speedY: 0.003 + Math.random() * 0.005,
+    swaySpeed: 1 + Math.random() * 2,
+    swayAmount: 0.3 + Math.random() * 0.5,
+    rotSpeed: (Math.random() - 0.5) * 0.03,
+    phase: Math.random() * Math.PI * 2
+  });
+}
+
+function resetFallingLeaf(mesh) {
+  mesh.position.set(
+    (Math.random() - 0.5) * 5,
+    4 + Math.random() * 4,
+    (Math.random() - 0.5) * 5
+  );
+  mesh.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI);
+}
+
+setProgress(95);
+
+/* ============================================================
+   RESIZE HANDLER
+   ============================================================ */
+window.addEventListener('resize', () => {
+  const w = window.innerWidth, h = window.innerHeight;
+  camera.aspect = w / h;
+  camera.updateProjectionMatrix();
+  renderer.setSize(w, h);
+  composer.setSize(w, h);
+});
+
+/* ============================================================
+   ANIMATION
+   ============================================================ */
+const clock = new THREE.Clock();
+const leafMatrices = [];
+for (let i = 0; i < leafCount; i++) {
+  const m = new THREE.Matrix4();
+  leafMesh.getMatrixAt(i, m);
+  leafMatrices.push({ matrix: m.clone(), phase: Math.random() * Math.PI * 2 });
+}
+
+function animate() {
+  requestAnimationFrame(animate);
+  const time = clock.getElapsedTime();
+  const delta = clock.getDelta();
+
+  wormholeMat.uniforms.uTime.value = time;
+
+  controls.update();
+
+  /* leaf sway */
+  const tempMatrix = new THREE.Matrix4();
+  const tempPos = new THREE.Vector3();
+  const tempQuat = new THREE.Quaternion();
+  const tempScale = new THREE.Vector3();
+  for (let i = 0; i < leafCount; i++) {
+    const ld = leafMatrices[i];
+    ld.matrix.decompose(tempPos, tempQuat, tempScale);
+    const swayAngle = Math.sin(time * 0.8 + ld.phase) * 0.03 + Math.sin(time * 1.3 + ld.phase * 2) * 0.015;
+    const swayQuat = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0.5).normalize(), swayAngle);
+    tempQuat.multiply(swayQuat);
+    tempMatrix.compose(tempPos, tempQuat, tempScale);
+    leafMesh.setMatrixAt(i, tempMatrix);
+  }
+  leafMesh.instanceMatrix.needsUpdate = true;
+
+  /* fireflies */
+  const ffPos = fireflyGeom.attributes.position;
+  for (let i = 0; i < fireflyCount; i++) {
+    const sp = fireflySpeeds[i];
+    ffPos.setX(i, ffPos.getX(i) + sp.x + Math.sin(time * 0.5 + sp.phase) * 0.002);
+    ffPos.setY(i, ffPos.getY(i) + sp.y + Math.sin(time * 0.3 + sp.phase * 1.5) * 0.001);
+    ffPos.setZ(i, ffPos.getZ(i) + sp.z + Math.cos(time * 0.4 + sp.phase * 0.8) * 0.002);
+    if (Math.abs(ffPos.getX(i)) > 8 || ffPos.getY(i) > 10 || ffPos.getY(i) < 0 || Math.abs(ffPos.getZ(i)) > 8) {
+      ffPos.setXYZ(i, (Math.random()-0.5)*8, Math.random()*7+1, (Math.random()-0.5)*8);
+    }
+  }
+  ffPos.needsUpdate = true;
+  fireflyMat.opacity = 0.3 + Math.sin(time * 1.5) * 0.2;
+
+  /* falling leaves */
+  fallingLeaves.forEach(fl => {
+    fl.mesh.position.y -= fl.speedY;
+    fl.mesh.position.x += Math.sin(time * fl.swaySpeed + fl.phase) * fl.swayAmount * 0.01;
+    fl.mesh.position.z += Math.cos(time * fl.swaySpeed * 0.7 + fl.phase) * fl.swayAmount * 0.008;
+    fl.mesh.rotation.x += fl.rotSpeed;
+    fl.mesh.rotation.z += fl.rotSpeed * 0.7;
+    if (fl.mesh.position.y < -0.5) {
+      resetFallingLeaf(fl.mesh);
+    }
+  });
+
+  /* sky slow rotation */
+  skySphere.rotation.y = time * 0.003;
+
+  composer.render();
+}
+
+/* ============================================================
+   START
+   ============================================================ */
+setProgress(100);
+
+setTimeout(() => {
+  document.getElementById('loading').classList.add('fade-out');
+  document.getElementById('overlay').classList.add('visible');
+  animate();
+}, 1200);
+
+</script>
+</body>
+</html>
